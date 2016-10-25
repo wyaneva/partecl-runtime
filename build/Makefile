@@ -11,7 +11,7 @@ test-on-gpu: ../source/runtime.c \
              ../utils/read-test-cases.c \
 	     ../utils/utils.c \
 	     ../kernel-gen/cpu-gen.c 
-	gcc $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL
+	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL
 
 clean:
 	rm -f $(EXECUTABLES) *.o

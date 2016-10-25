@@ -40,7 +40,7 @@ int main(int argc, char **argv)
   double trans_results = 0.0;
   double time_gpu = 0.0;
   double end_to_end = 0.0;
-  timestamp_type ete_start, ete_end;
+  struct timespec ete_start, ete_end;
   cl_ulong ev_start_time, ev_end_time;
 
   int do_compare_results = HANDLE_RESULTS;

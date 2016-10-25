@@ -18,14 +18,14 @@
 #define TIMING_H
 #include <time.h>
 
-static void get_timestamp(timespec *t)
+static void get_timestamp(struct timespec *t)
 {
   clock_gettime(CLOCK_REALTIME, t);
 }
 
-static double timestamp_diff_in_seconds(timespec start, timespec end)
+static double timestamp_diff_in_seconds(struct timespec start, struct timespec end)
 {
-  timespec temp;
+  struct timespec temp;
   if ((end.tv_nsec-start.tv_nsec)<0) 
   {
     temp.tv_sec = end.tv_sec-start.tv_sec-1;

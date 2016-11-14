@@ -92,7 +92,7 @@ int main(int argc, char **argv)
   char *knl_text = read_file(GPU_SOURCE);
   //add include directory for the kernel header files (structs & clClibc)
 
-  char options[] = "-I /home/vanya/gpu-testing/kernel-gen/ -I /home/vanya/clClibc/";
+  char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clClibc/";
   //char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/gpu-testing/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
   cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, options);
   free(knl_text);
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
   {
     printf("Number of test cases: %d\n", num_test_cases);
     printf("Time in ms\n");
-    printf("trans-inputs ; time-gpu ; trans-results ; time-total \n");
+    printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
   for(int i=0; i < num_runs; i++)
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 
     end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; //in ms
     if(do_time)
-      printf("%f ; %f ; %f ; %f \n", trans_inputs, time_gpu, trans_results, end_to_end);
+      printf("%f %f %f %f \n", trans_inputs, trans_results, time_gpu, end_to_end);
  
     //check results
     if(do_compare_results)
@@ -346,7 +346,6 @@ void compare_results(result * results, result * exp_results, int num_test_cases)
 */
 
 //automotive
-/*
 void compare_results(result * results, result * exp_results, int num_test_cases)
 {
   for(int i = 0; i < num_test_cases; i++)
@@ -359,9 +358,9 @@ void compare_results(result * results, result * exp_results, int num_test_cases)
     printf("\n");
   }
 }
-*/
 
 //telecom
+/*
 void compare_results(result * results, result * exp_results, int num_test_cases)
 {
   for(int i = 0; i < num_test_cases; i++)
@@ -374,6 +373,7 @@ void compare_results(result * results, result * exp_results, int num_test_cases)
     printf("\n");
   }
 }
+*/
 
 /*
 //empty

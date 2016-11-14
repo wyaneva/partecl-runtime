@@ -134,7 +134,10 @@ int main(int argc, char** argv)
 
   if(read_options(argc, argv, &num_test_cases, &do_print_results, &do_time, &num_runs) == FAIL)
     return 0;
+  printf("Device: CPU.\n", num_test_cases);
   printf("Number of test cases %d.\n", num_test_cases);
+  if(do_time)
+    printf("Time in ms\n");
 
   struct input * inputs;
   size_t size = sizeof(struct input) * num_test_cases;
@@ -147,7 +150,7 @@ int main(int argc, char** argv)
 
   for(int i = 0; i < num_runs; i++)
   {
-    timestamp_type time1, time2;
+    struct timespec time1, time2;
     get_timestamp(&time1);
     for(int j = 0; j < num_test_cases; j++)
     {
@@ -163,6 +166,6 @@ int main(int argc, char** argv)
     double time_cpu = time_in_secs*1000;
 
     if(do_time)
-      printf("Time in ms: %f \n", time_cpu);
+      printf("%f \n", time_cpu);
   }
 }

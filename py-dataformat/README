@@ -1,0 +1,10 @@
+-------------
+py-dataformat
+-------------
+
+A set of python scripts which aggregate the timing data produced by ParTeCL-Runtime.
+The objective is to produce data files which can be parsed by the python scripts creating plots.
+
+I. Scripts:
+
+

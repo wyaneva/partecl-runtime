@@ -23,7 +23,7 @@ import argparse
 import matplotlib.pyplot as plt 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('datafiles', nargs='+', help='speedup data for applications')
+parser.add_argument('datafiles', nargs='+', help='gpu data')
 args = parser.parse_args()
 
 print("trans-inputs trans-results exec-kernel time-total") 

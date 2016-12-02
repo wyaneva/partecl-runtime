@@ -26,13 +26,14 @@
 #include "../utils/utils.h"
 #include "../kernel-gen/cpu-gen.h"
 #include "cl-utils.h"
+#include "compare-results.h"
 
 #define GPU_SOURCE "../kernel-gen/test.cl"
 #define KERNEL_NAME "main_kernel"
 
 void calculate_dimensions(size_t[3], size_t[3], int);
-void read_expected_results(result *, int);
-void compare_results(result *, result *, int);
+void read_expected_results(struct result *, int);
+//void compare_results(struct result *, struct result *, int);
 
 int main(int argc, char **argv)
 {
@@ -46,9 +47,10 @@ int main(int argc, char **argv)
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
+  char* benchmark = B_DEFAULT;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, benchmark) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases
@@ -185,8 +187,26 @@ int main(int argc, char **argv)
       printf("%f %f %f %f \n", trans_inputs, trans_results, time_gpu, end_to_end);
  
     //check results
+    //TODO: automate the generation of the comparison code
     if(do_compare_results)
-      compare_results(results, exp_results, num_test_cases);
+    {
+      if(strcmp(benchmark, B_DEFAULT) == 0)
+      {
+        compare_results_default(results, exp_results, num_test_cases);
+      }
+      else if(strcmp(benchmark, B_AUTOMOTIVE) == 0)
+      {
+        compare_results_eembc_automotive(results, exp_results, num_test_cases);
+      }
+      else if(strcmp(benchmark, B_TELECOM) == 0)
+      {
+        compare_results_eembc_telecom(results, exp_results, num_test_cases);
+      }
+      else
+      {
+        printf("Cannot compare results of type %s.\n", benchmark);
+      }
+    }
   }
 
   free(inputs);
@@ -246,24 +266,10 @@ void run_on_cpu(input *inputs, int num_test_cases, double *time_cpu)
 }
 */
 
-void read_expected_results(result *results, int num_test_cases)
+void read_expected_results(struct result *results, int num_test_cases)
 {
   //TODO:
 }
-
-//generic print
-/*
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    result out_result = results[i];
-    int test_case_num = out_result.test_case_num;
-    
-    printf("TC %d: %d\n", test_case_num, out_result.result);
-  }
-}
-*/
 
 //replace
 /*
@@ -346,6 +352,7 @@ void compare_results(result * results, result * exp_results, int num_test_cases)
 */
 
 //automotive
+/*
 void compare_results(result * results, result * exp_results, int num_test_cases)
 {
   for(int i = 0; i < num_test_cases; i++)
@@ -358,6 +365,7 @@ void compare_results(result * results, result * exp_results, int num_test_cases)
     printf("\n");
   }
 }
+*/
 
 //telecom
 /*

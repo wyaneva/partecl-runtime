@@ -7,6 +7,7 @@ all: $(EXECUTABLES)
 
 test-on-gpu: ../source/runtime.c \
 	     ../source/cl-utils.c \
+	     ../source/compare-results.c \
 	     ../utils/options.c \
              ../utils/read-test-cases.c \
 	     ../utils/utils.c \

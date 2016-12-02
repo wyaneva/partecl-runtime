@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef OPTIONS_H
-#define OPTIONS_H
+#ifndef COMPARE_RESULTS_H
+#define COMPARE_RESULTS_H
 
-//default values
-#define HANDLE_RESULTS 1
-#define NUM_RUNS       1
-#define DO_TIME        0
-
-//benchmark names
-#define B_DEFAULT    "DEFAULT"
-#define B_AUTOMOTIVE "AUTOMOTIVE"
-#define B_TELECOM    "TELECOM"
-
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, char* benchmark);
+void compare_results_default(struct result *, struct result *, int);
+void compare_results_eembc_automotive(struct result *, struct result *, int);
+void compare_results_eembc_telecom(struct result *, struct result *, int);
 
 #endif

@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "options.h"
 #include "utils.h"
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs)
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, char* benchmark)
 {  
   
   if(argc < 2)
   {
-    printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..)\n");
+    printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..) (-benchmark %s/%s/%s) \n", B_DEFAULT, B_AUTOMOTIVE, B_TELECOM);
     return FAIL;
   }
   *num_test_cases = atoi(argv[1]);
@@ -66,6 +65,10 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
 
         if(strcmp(argv[i+1],"N") == 0)
           *do_time = 0;
+      }
+      else if(strcmp(label, "-benchmark") == 0) //benchmark name
+      {
+        benchmark = argv[i+1];
       }
       else
       {

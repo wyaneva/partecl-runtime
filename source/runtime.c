@@ -26,14 +26,13 @@
 #include "../utils/utils.h"
 #include "../kernel-gen/cpu-gen.h"
 #include "cl-utils.h"
-#include "compare-results.h"
+//#include "compare-results.h"
 
 #define GPU_SOURCE "../kernel-gen/test.cl"
 #define KERNEL_NAME "main_kernel"
 
 void calculate_dimensions(size_t[3], size_t[3], int);
 void read_expected_results(struct result *, int);
-//void compare_results(struct result *, struct result *, int);
 
 int main(int argc, char **argv)
 {
@@ -94,8 +93,8 @@ int main(int argc, char **argv)
   char *knl_text = read_file(GPU_SOURCE);
   //add include directory for the kernel header files (structs & clClibc)
 
-  char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clClibc/";
-  //char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/gpu-testing/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
+  char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clclibc/";
+  //char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/partecl-runtime/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
   cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, options);
   free(knl_text);
 
@@ -187,26 +186,8 @@ int main(int argc, char **argv)
       printf("%f %f %f %f \n", trans_inputs, trans_results, time_gpu, end_to_end);
  
     //check results
-    //TODO: automate the generation of the comparison code
     if(do_compare_results)
-    {
-      if(strcmp(benchmark, B_DEFAULT) == 0)
-      {
-        compare_results_default(results, exp_results, num_test_cases);
-      }
-      else if(strcmp(benchmark, B_AUTOMOTIVE) == 0)
-      {
-        compare_results_eembc_automotive(results, exp_results, num_test_cases);
-      }
-      else if(strcmp(benchmark, B_TELECOM) == 0)
-      {
-        compare_results_eembc_telecom(results, exp_results, num_test_cases);
-      }
-      else
-      {
-        printf("Cannot compare results of type %s.\n", benchmark);
-      }
-    }
+      compare_results(results, exp_results, num_test_cases);
   }
 
   free(inputs);

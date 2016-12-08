@@ -22,11 +22,6 @@
 #define NUM_RUNS       1
 #define DO_TIME        0
 
-//benchmark names
-#define B_DEFAULT    "DEFAULT"
-#define B_AUTOMOTIVE "AUTOMOTIVE"
-#define B_TELECOM    "TELECOM"
-
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, char* benchmark);
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs);
 
 #endif

@@ -46,10 +46,9 @@ int main(int argc, char **argv)
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
-  char* benchmark = B_DEFAULT;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, benchmark) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases

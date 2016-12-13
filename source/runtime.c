@@ -32,7 +32,7 @@
 #define KERNEL_NAME "main_kernel"
 
 void calculate_dimensions(size_t[3], size_t[3], int);
-void read_expected_results(struct result *, int);
+void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
 {
@@ -52,12 +52,12 @@ int main(int argc, char **argv)
     return 0;
 
   //allocate CPU memory and generate test cases
-  struct input * inputs;
-  size_t size = sizeof(struct input) * num_test_cases;
-  inputs = (struct input *)malloc(size);
-  struct result * results;
-  size_t size_results = sizeof(struct result) * num_test_cases;
-  results = (struct result *)malloc(size_results);
+  struct partecl_input * inputs;
+  size_t size = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input*)malloc(size);
+  struct partecl_result * results;
+  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
+  results = (struct partecl_result *)malloc(size_results);
 
   //create queue and context
   cl_context ctx;
@@ -97,8 +97,8 @@ int main(int argc, char **argv)
   cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, options);
   free(knl_text);
 
-  struct result * exp_results;
-  exp_results = (struct result *)malloc(sizeof(struct result)*num_test_cases);
+  struct partecl_result * exp_results;
+  exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result)*num_test_cases);
   if(do_compare_results)
     read_expected_results(exp_results, num_test_cases);
 
@@ -246,7 +246,7 @@ void run_on_cpu(input *inputs, int num_test_cases, double *time_cpu)
 }
 */
 
-void read_expected_results(struct result *results, int num_test_cases)
+void read_expected_results(struct partecl_result *results, int num_test_cases)
 {
   //TODO:
 }

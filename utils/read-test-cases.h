@@ -19,6 +19,6 @@
 
 #include "../kernel-gen/structs.h"
 
-int read_test_cases(struct input* , int);
+int read_test_cases(struct partecl_input* , int);
 
 #endif

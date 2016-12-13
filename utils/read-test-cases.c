@@ -164,7 +164,7 @@ int parseArg(char** arg, char** bptr)
   return PARSED_ARGV;
 }
 
-int read_test_cases(struct input* inputs, int num_test_cases)
+int read_test_cases(struct partecl_input* inputs, int num_test_cases)
 {
   int index = 0;
   char line[100000];

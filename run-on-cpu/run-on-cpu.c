@@ -24,39 +24,11 @@
 #include "../kernel-gen/structs.h"
 #include "../kernel-gen/cpu-gen.h"
 
-//int run_main(int, char**, char*);
-int run_main(struct input input, struct result *result);
+int run_main(struct partecl_input input, struct partecl_result *result);
 
-//telecom
-/*
-void run_on_cpu(struct input input, struct result *result)
+void run_on_cpu(struct partecl_input input, struct partecl_result *result)
 {
   run_main(input, result);
-}
-void print_results(struct result *result)
-{
-  printf("TC %d ", (*result).test_case_num);
-
-  for(int i = 0; i < 32; i++)
-    printf("%d ", (*result).result[i]);
-
-  printf("\n");
-}
-*/
-
-//automotive
-void run_on_cpu(struct input input, struct result *result)
-{
-  run_main(input, result);
-}
-void print_results(struct result *result)
-{
-  printf("TC %d ", (*result).test_case_num);
-
-  for(int i = 0; i < 256; i++)
-    printf("%d ", (*result).RAMfile[i]);
-
-  printf("\n");
 }
 
 //replace
@@ -134,15 +106,15 @@ int main(int argc, char** argv)
 
   if(read_options(argc, argv, &num_test_cases, &do_print_results, &do_time, &num_runs) == FAIL)
     return 0;
-  printf("Device: CPU.\n", num_test_cases);
+  printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);
   if(do_time)
     printf("Time in ms\n");
 
-  struct input * inputs;
-  size_t size = sizeof(struct input) * num_test_cases;
-  inputs = (struct input *)malloc(size);
-  struct result result;
+  struct partecl_input * inputs;
+  size_t size = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input *)malloc(size);
+  struct partecl_result result;
 
    //read the test cases
   if(read_test_cases(inputs, num_test_cases) == FAIL)
@@ -154,12 +126,13 @@ int main(int argc, char** argv)
     get_timestamp(&time1);
     for(int j = 0; j < num_test_cases; j++)
     {
-      struct input input = inputs[j];
+      struct partecl_input input = inputs[j];
 
       run_on_cpu(input, &result);
 
       if(do_print_results && i == 0) //print them only once
-        print_results(&result);
+        compare_results(&result, NULL, 1);
+        //print_results(&result);
     }
     get_timestamp(&time2);
     double time_in_secs = timestamp_diff_in_seconds(time1, time2);

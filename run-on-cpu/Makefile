@@ -7,7 +7,7 @@ run-on-cpu:  run-on-cpu.c \
 	     ../utils/read-test-cases.c \
 	     ../utils/utils.c \
 	     ../kernel-gen/cpu-gen.c \
-	     test-cl.c
+	     gen/test-cl.c
 	gcc -std=gnu99 -o$@ $^ -lrt -lm
 
 clean:

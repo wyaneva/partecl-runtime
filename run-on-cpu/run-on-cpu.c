@@ -132,7 +132,6 @@ int main(int argc, char** argv)
 
       if(do_print_results && i == 0) //print them only once
         compare_results(&result, NULL, 1);
-        //print_results(&result);
     }
     get_timestamp(&time2);
     double time_in_secs = timestamp_diff_in_seconds(time1, time2);
@@ -140,5 +139,7 @@ int main(int argc, char** argv)
 
     if(do_time)
       printf("%f \n", time_cpu);
+
+    printf("\n");
   }
 }

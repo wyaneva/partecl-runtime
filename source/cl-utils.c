@@ -35,22 +35,46 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
 
   if (build_status != CL_SUCCESS)
   {
+    //get the device
     cl_device_id device;
     err = clGetProgramInfo(program, CL_PROGRAM_DEVICES, sizeof(device), &device, NULL);
     if(err != CL_SUCCESS)
       printf("error: clGetProgramInfo: %d\n", err);
 
+    //get the device name
+    char device_name[20];
+    err = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
+    if(err != CL_SUCCESS)
+      printf("error: clGetDeviceInfo: %d\n", err);
+
+    //get the binaries (for debugging)
+    size_t num_binaries;
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, 0, NULL, &num_binaries);
+    if(err != CL_SUCCESS)
+      printf("error: clGetProgramInfo: %d\n", err);
+
+    size_t binary_sizes[num_binaries];
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, sizeof(binary_sizes), binary_sizes, NULL);
+    if(err != CL_SUCCESS)
+      printf("error: clGetProgramInfo: %d\n", err);
+
+    char* binaries[num_binaries];
+    for(int i = 0; i < num_binaries; i++)
+      binaries[i] = (char*)malloc(binary_sizes[i]*sizeof(char));
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARIES, sizeof(binaries), binaries, NULL);
+    if(err != CL_SUCCESS)
+      printf("error: clGetProgramInfo: %d\n", err);
+
+    for(int i = 0; i < num_binaries; i++)
+      printf("%s\n", binaries[i]);
+
+    //get the build log
     size_t log_size;
     err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
     if(err != CL_SUCCESS)
       printf("error: clGetProgramBuildInfo 1: %d\n", err);
 
     char *log = (char *) malloc(log_size);
-
-    char device_name[20];
-    err = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
-    if(err != CL_SUCCESS)
-      printf("error: clGetDeviceInfo: %d\n", err);
 
     err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
     if(err != CL_SUCCESS)
@@ -133,6 +157,12 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue)
   else
     printf("Local memory size (in bytes): %ld \n", local_memory_size);
 
+  char version[20];
+  err = clGetDeviceInfo(dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo: %d\n", err);
+  else
+    printf("Version: %s \n", version);
 
   free(platforms);
   free(devices);

@@ -140,7 +140,5 @@ int main(int argc, char** argv)
 
     if(do_time)
       printf("%f \n", time_cpu);
-
-    printf("\n");
   }
 }

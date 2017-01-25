@@ -92,8 +92,8 @@ int main(int argc, char **argv)
   char *knl_text = read_file(GPU_SOURCE);
   //add include directory for the kernel header files (structs & clClibc)
 
-  char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clclibc/";
-  //char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/partecl-runtime/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
+  //char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clclibc/";
+  char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/partecl-runtime/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
   cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, options);
   free(knl_text);
 
@@ -127,8 +127,8 @@ int main(int argc, char **argv)
     get_timestamp(&ete_start);
 
     //transfer input to device
-    cl_event event_transfer_inputs;
-    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size, inputs, 0, NULL, &event_transfer_inputs);
+    cl_event event_inputs;
+    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size, inputs, 0, NULL, &event_inputs);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueWriteBuffer: %d\n", err);
     
@@ -142,8 +142,9 @@ int main(int argc, char **argv)
       printf("error: clSetKernelArg 1: %d\n", err);
 
     //launch kernel
-    cl_event event_kernel;
+    cl_event event_kernel = 0;
     err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, &event_kernel);
+    //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueNDRangeKernel: %d\n", err);
 
@@ -169,8 +170,8 @@ int main(int argc, char **argv)
       printf("error: clReleaseMemObjec: %d\n", err);
     
     //gather performance data
-    clGetEventProfilingInfo(event_transfer_inputs, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
-    clGetEventProfilingInfo(event_transfer_inputs, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
+    clGetEventProfilingInfo(event_inputs, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
+    clGetEventProfilingInfo(event_inputs, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
     trans_inputs = (double)(ev_end_time - ev_start_time)/1000000;
     clGetEventProfilingInfo(event_results, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
     clGetEventProfilingInfo(event_results, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
@@ -187,6 +188,16 @@ int main(int argc, char **argv)
     //check results
     if(do_compare_results)
       compare_results(results, exp_results, num_test_cases);
+
+    err = clReleaseEvent(event_inputs);
+    if(err != CL_SUCCESS)
+      printf("error: clReleaseEvent (event_inputs): %d\n", err);
+    err = clReleaseEvent(event_results);
+    if(err != CL_SUCCESS)
+      printf("error: clReleaseEvent (event_results): %d\n", err);
+    err = clReleaseEvent(event_kernel);
+    if(err != CL_SUCCESS)
+      printf("error: clReleaseEvent (event_kernel): %d\n", err);
   }
 
   free(inputs);

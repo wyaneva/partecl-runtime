@@ -203,8 +203,6 @@ int main(int argc, char **argv)
   free(inputs);
   free(results);
   free(exp_results);
-
-  printf("\n");
 }
 
 void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases)

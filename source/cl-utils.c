@@ -41,12 +41,6 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
     if(err != CL_SUCCESS)
       printf("error: clGetProgramInfo: %d\n", err);
 
-    //get the device name
-    char device_name[20];
-    err = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(device_name), device_name, NULL);
-    if(err != CL_SUCCESS)
-      printf("error: clGetDeviceInfo: %d\n", err);
-
     //get the binaries (for debugging)
     size_t num_binaries;
     err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, 0, NULL, &num_binaries);
@@ -59,13 +53,13 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
       printf("error: clGetProgramInfo: %d\n", err);
 
     char* binaries[num_binaries];
-    for(int i = 0; i < num_binaries; i++)
+    for(size_t i = 0; i < num_binaries; i++)
       binaries[i] = (char*)malloc(binary_sizes[i]*sizeof(char));
     err = clGetProgramInfo(program, CL_PROGRAM_BINARIES, sizeof(binaries), binaries, NULL);
     if(err != CL_SUCCESS)
       printf("error: clGetProgramInfo: %d\n", err);
 
-    for(int i = 0; i < num_binaries; i++)
+    for(size_t i = 0; i < num_binaries; i++)
       printf("%s\n", binaries[i]);
 
     //get the build log
@@ -80,8 +74,8 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
     if(err != CL_SUCCESS)
       printf("error: clGetProgramBuildInfo 2: %d\n", err);
 
-    fprintf(stderr, "*** build of '%s' on '%s' said:\n%s\n*** (end of message)\n",
-      kernel_name, device_name, log);
+    fprintf(stderr, "*** build of '%s' said:\n%s\n*** (end of message)\n",
+      kernel_name, log);
 
     free(log);
   }
@@ -157,7 +151,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue)
   else
     printf("Local memory size (in bytes): %ld \n", local_memory_size);
 
-  char version[20];
+  char version[100];
   err = clGetDeviceInfo(dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);

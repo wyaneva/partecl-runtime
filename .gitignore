@@ -1,7 +1,7 @@
-#folders with files relative to the tested benchmark
+#generated folders, relative to the tested benchmark
 kernel-gen/*
-run-on-cpu/gen/*
+cpu-gen/*
 
 #executables
-build/test-on-gpu
-run-on-cpu/run-on-cpu
+build/gpu-test
+build/cpu-test

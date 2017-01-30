@@ -5,4 +5,3 @@ run-on-cpu/gen/*
 #executables
 build/test-on-gpu
 run-on-cpu/run-on-cpu
-openmp/run-in-parallel

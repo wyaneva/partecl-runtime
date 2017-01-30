@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
 #include "../utils/timing.h"
 #include "../utils/read-test-cases.h"
 #include "../utils/utils.h"
@@ -32,72 +33,6 @@ void run_on_cpu(struct partecl_input input, struct partecl_result *result)
   run_main(input, result);
 }
 
-//replace
-/*
-void run_on_cpu(struct input input)
-{    
-  int argc = input.argc;
-  char *argv[3];
-
-  argv[1] = (char *)malloc(sizeof(char)*(strlen(input.pat_in)+1));
-  sprintf(argv[1], "%s", input.pat_in);
-
-  argv[2] = (char *)malloc(sizeof(char)*(strlen(input.sub_in)+1));
-  sprintf(argv[2], "%s", input.sub_in);
-
-  //change the name of the 'main' function in the original code
-  run_main(argc, argv, input.stdin1);
-}
-*/
-
-//tcas 
-/*
-void run_on_cpu(struct input input)
-{
-   int argc = input.argc;
-   char *argv[13];
-
-   argv[1] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[1], "%d", input.Cur_Vertical_Sep);
-
-   argv[2] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[2], "%d", input.High_Confidence);
-
-   argv[3] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[3], "%d", input.Two_of_Three_Reports_Valid);
-
-   argv[4] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[4], "%d", input.Own_Tracked_Alt);
-
-   argv[5] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[5], "%d", input.Own_Tracked_Alt_Rate);
-
-   argv[6] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[6], "%d", input.Other_Tracked_Alt);
-
-   argv[7] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[7], "%d", input.Alt_Layer_Value);
-
-   argv[8] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[8], "%d", input.Up_Separation);
-
-   argv[9] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[9], "%d", input.Down_Separation);
-
-   argv[10] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[10], "%d", input.Other_RAC);
-
-   argv[11] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[11], "%d", input.Other_Capability);
-
-   argv[12] = (char *)malloc(sizeof(char)*10);
-   sprintf(argv[12], "%d", input.Climb_Inhibit);
-
-   //change the name of the 'main' function in the original code
-   run_main(argc, argv, NULL);
-}
-*/
-
 int main(int argc, char** argv)
 {
   int do_print_results = HANDLE_RESULTS;
@@ -109,13 +44,21 @@ int main(int argc, char** argv)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);
+#pragma omp parallel default(none)
+  {
+    int tid = omp_get_thread_num();
+    if(tid == 0)
+      printf("Number of threads = %d\n", omp_get_num_threads());
+  }
   if(do_time)
     printf("Time in ms\n");
 
   struct partecl_input * inputs;
-  size_t size = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input *)malloc(size);
-  struct partecl_result result;
+  size_t inputs_size = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input *)malloc(inputs_size);
+  struct partecl_result * results;
+  size_t results_size = sizeof(struct partecl_result) * num_test_cases;
+  results = (struct partecl_result *)malloc(results_size);
 
    //read the test cases
   if(read_test_cases(inputs, num_test_cases) == FAIL)
@@ -125,14 +68,15 @@ int main(int argc, char** argv)
   {
     struct timespec time1, time2;
     get_timestamp(&time1);
+
+#pragma omp parallel for default(none) \
+    shared(num_test_cases, inputs, results) \
+    schedule(static)
     for(int j = 0; j < num_test_cases; j++)
     {
       struct partecl_input input = inputs[j];
 
-      run_on_cpu(input, &result);
-
-      if(do_print_results && i == 0) //print them only once
-        compare_results(&result, NULL, 1);
+      run_on_cpu(input, &results[j]);
     }
     get_timestamp(&time2);
     double time_in_secs = timestamp_diff_in_seconds(time1, time2);
@@ -140,5 +84,8 @@ int main(int argc, char** argv)
 
     if(do_time)
       printf("%f \n", time_cpu);
+
+    if(do_print_results) 
+      compare_results(results, NULL, num_test_cases);
   }
 }

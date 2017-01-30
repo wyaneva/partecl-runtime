@@ -9,7 +9,7 @@ run-on-cpu:  run-on-cpu.c \
 	     ../utils/utils.c \
 	     ../kernel-gen/cpu-gen.c \
 	     gen/test-cl.c
-	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(FLAGS)
+	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(FLAGS) -fopenmp
 
 clean:
 	rm -f $(EXECUTABLES) *.o

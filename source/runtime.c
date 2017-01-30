@@ -26,10 +26,15 @@
 #include "../utils/utils.h"
 #include "../kernel-gen/cpu-gen.h"
 #include "cl-utils.h"
-//#include "compare-results.h"
 
 #define GPU_SOURCE "../kernel-gen/test.cl"
 #define KERNEL_NAME "main_kernel"
+
+//IMPORTANT: kernel options should be defined in Makefile, based on the machine, on which we are compiling
+//otherwise, the kernel will not build
+#ifndef KERNEL_OPTIONS
+#define KERNEL_OPTIONS "NONE"
+#endif
 
 void calculate_dimensions(size_t[3], size_t[3], int);
 void read_expected_results(struct partecl_result *, int);
@@ -92,9 +97,7 @@ int main(int argc, char **argv)
   char *knl_text = read_file(GPU_SOURCE);
   //add include directory for the kernel header files (structs & clClibc)
 
-  //char options[] = "-I /home/vanya/partecl-runtime/kernel-gen/ -I /home/vanya/clclibc/";
-  char options[] = "-I /afs/inf.ed.ac.uk/user/s08/s0835905/partecl-runtime/kernel-gen/ -I /afs/inf.ed.ac.uk/user/s08/s0835905/clClibc/";
-  cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, options);
+  cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
   free(knl_text);
 
   struct partecl_result * exp_results;
@@ -208,7 +211,7 @@ int main(int argc, char **argv)
 void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases)
 {
   //calculate local dimension
-  size_t ldim0 = num_test_cases;
+  int ldim0 = num_test_cases;
   int div = num_test_cases/ 999;
   if(div > 0)
     ldim0 = num_test_cases/ (div+1);
@@ -229,153 +232,8 @@ void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases)
   ldim[2] = 1;
 }
 
-/*
-void run_on_cpu(input *inputs, int num_test_cases, double *time_cpu)
-{
-  timestamp_type time1, time2;
-  get_timestamp(&time1);
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    struct input input = inputs[i];
-    int argc = input.argc;
-    char *argv[3];
-
-    argv[1] = (char *)malloc(sizeof(char)*strlen(input.pat_in));
-    sprintf(argv[1], "%s", input.pat_in);
-
-    argv[2] = (char *)malloc(sizeof(char)*strlen(input.sub_in));
-    sprintf(argv[2], "%s", input.sub_in);
-
-    //change the name of the 'main' function in the original code
-    run_main(argc, argv, input.stdin1);
-  }
-  get_timestamp(&time2);
-  double time_in_secs = timestamp_diff_in_seconds(time1, time2);
-  *time_cpu = time_in_secs*1000;
-}
-*/
-
 void read_expected_results(struct partecl_result *results, int num_test_cases)
 {
   //TODO:
 }
 
-//replace
-/*
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  int fail = 0;
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    result out_result = results[i];
-    int test_case_num = out_result.test_case_num;
-    
-    //read expected result
-    char exp_file_name[] = "../kernel-gen/outputs/t"; 
-    char t_str[5];
-    sprintf(t_str, "%d", test_case_num);
-    char* filename = (char*)malloc(sizeof(char)*(strlen(exp_file_name)+strlen(t_str)+1));
-    *filename = '\0';
-    strcat(filename, exp_file_name);
-    strcat(filename, t_str);
-    char* exp_result = read_file(filename);
-    free(filename);
-
-    if(strcmp(out_result.result, exp_result) != 0)
-    {
-      printf("FAIL! TC %d: \n", test_case_num);
-      printf("  Expected: \n%s \n", exp_result);
-      printf("  Got: \n%s \n", out_result.result);
-      fail++;
-    }
-    free(exp_result);
-  }
-
-  if(fail == 0)
-    printf("ALL PASS!\n");
-  else
-    printf("Failed: %d tests.\n", fail);
-}
-*/
-
-//tcas
-/*
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  int fail = 0;
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    result out_result = results[i];
-    int test_case_num = out_result.test_case_num;
-    
-    //read expected result
-    char exp_file_name[] = "../kernel-gen/outputs/t"; 
-    char t_str[5];
-    sprintf(t_str, "%d", test_case_num);
-    char* filename = (char*)malloc(sizeof(char)*(strlen(exp_file_name)+strlen(t_str)+1));
-    *filename = '\0';
-    strcat(filename, exp_file_name);
-    strcat(filename, t_str);
-    char* exp_result_str = read_file(filename);
-    if(!isdigit(*exp_result_str))
-      continue;
-
-    int exp_result = strtol(exp_result_str, NULL, 10);
-
-    if(out_result.result != exp_result)
-    {
-      printf("FAIL! TC %d: \n", test_case_num);
-      printf("  Expected: \n%d \n", exp_result);
-      printf("  Got: \n%d \n", out_result.result);
-      fail++;
-    }
-    free(exp_result_str);
-    free(filename);
-  }
-
-  if(fail == 0)
-    printf("ALL PASS!\n");
-  else
-    printf("Failed: %d tests.\n", fail);
-}
-*/
-
-//automotive
-/*
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    printf("TC %d ", results[i].test_case_num);
-    for(int j = 0; j < 256; j++)
-    {
-      printf("%d ", results[i].RAMfile[j]);
-    }
-    printf("\n");
-  }
-}
-*/
-
-//telecom
-/*
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  for(int i = 0; i < num_test_cases; i++)
-  {
-    printf("TC %d ", results[i].test_case_num);
-    for(int j = 0; j < 32; j++)
-    {
-      printf("%d ", results[i].result[j]);
-    }
-    printf("\n");
-  }
-}
-*/
-
-/*
-//empty
-void compare_results(result * results, result * exp_results, int num_test_cases)
-{
-  //do nothing
-}
-*/

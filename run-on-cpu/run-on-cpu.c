@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
+#include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/structs.h"
+#include "../utils/options.h"
+#include "../utils/read-test-cases.h"
+#include "../utils/timing.h"
+#include "../utils/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <omp.h>
-#include "../utils/timing.h"
-#include "../utils/read-test-cases.h"
-#include "../utils/utils.h"
-#include "../utils/options.h"
-#include "../kernel-gen/structs.h"
-#include "../kernel-gen/cpu-gen.h"
 
 int run_main(struct partecl_input input, struct partecl_result *result);
 
@@ -69,23 +68,26 @@ int main(int argc, char** argv)
     struct timespec time1, time2;
     get_timestamp(&time1);
 
-#pragma omp parallel for default(none) \
+#pragma omp parallel for \
+    default(none) \
     shared(num_test_cases, inputs, results) \
     schedule(static)
     for(int j = 0; j < num_test_cases; j++)
     {
-      struct partecl_input input = inputs[j];
-
-      run_on_cpu(input, &results[j]);
+      run_on_cpu(inputs[j], &results[j]);
     }
+
     get_timestamp(&time2);
     double time_in_secs = timestamp_diff_in_seconds(time1, time2);
     double time_cpu = time_in_secs*1000;
 
     if(do_time)
       printf("%f \n", time_cpu);
-
-    if(do_print_results) 
-      compare_results(results, NULL, num_test_cases);
   }
+
+  if(do_print_results) 
+    compare_results(results, NULL, num_test_cases);
+
+  free(inputs);
+  free(results);
 }

@@ -1,6 +1,6 @@
 EXECUTABLES = gpu-test cpu-test
 
-GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/clclibc/\""
+GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/clClibc/\""
 CPU_FLAGS = -DGCC_COMPILED=1
 
 all: $(EXECUTABLES)

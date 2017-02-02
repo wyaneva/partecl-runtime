@@ -143,7 +143,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue)
   else
     printf("Work-group size: %ld \n", workgroup_size);
 
-  //work-group size
+  //local mem size
   size_t local_memory_size;
   err = clGetDeviceInfo(dev, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_memory_size), &local_memory_size, NULL);
   if(err != CL_SUCCESS)

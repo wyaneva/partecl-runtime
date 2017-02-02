@@ -19,7 +19,7 @@
 #include "options.h"
 #include "utils.h"
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs)
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim)
 {  
   
   if(argc < 2)
@@ -51,6 +51,10 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
       else if(strcmp(label, "-runs") == 0) //number of runs
       {
         *num_runs = atoi(argv[i+1]);
+      }
+      else if(strcmp(label, "-ldim") == 0) //work-group size
+      {
+        *ldim = atoi(argv[i+1]);
       }
       else if(strcmp(label, "-time") == 0) //do time
       {

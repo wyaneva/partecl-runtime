@@ -39,7 +39,7 @@ int main(int argc, char** argv)
   int do_time = DO_TIME;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_print_results, &do_time, &num_runs) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_print_results, &do_time, &num_runs, NULL) == FAIL)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);

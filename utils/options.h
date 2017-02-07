@@ -21,7 +21,8 @@
 #define HANDLE_RESULTS 1
 #define NUM_RUNS       1
 #define DO_TIME        0
+#define LDIM           0
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs);
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim);
 
 #endif

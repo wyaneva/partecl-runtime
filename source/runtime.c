@@ -36,7 +36,7 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
-void calculate_dimensions(size_t[3], size_t[3], int);
+void calculate_dimensions(size_t[3], size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
@@ -51,9 +51,10 @@ int main(int argc, char **argv)
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
+  int ldim0 = LDIM;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases
@@ -105,6 +106,11 @@ int main(int argc, char **argv)
   if(do_compare_results)
     read_expected_results(exp_results, num_test_cases);
 
+  //clalculate dimensions
+  size_t gdim[3], ldim[3];
+  calculate_dimensions(gdim, ldim, num_test_cases, ldim0);
+  printf("LDIM = %zd\n", ldim[0]);
+
   if(do_time)
   {
     printf("Number of test cases: %d\n", num_test_cases);
@@ -122,10 +128,6 @@ int main(int argc, char **argv)
     cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
-
-    //clalculate dimensions
-    size_t gdim[3], ldim[3];
-    calculate_dimensions(gdim, ldim, num_test_cases);
 
     get_timestamp(&ete_start);
 
@@ -208,20 +210,30 @@ int main(int argc, char **argv)
   free(exp_results);
 }
 
-void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases)
+void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
 {
   //calculate local dimension
   int ldim0 = num_test_cases;
-  int div = num_test_cases/ 999;
-  if(div > 0)
-    ldim0 = num_test_cases/ (div+1);
 
-  //ensure that the dimensions will be properly distributed across 
-  while((num_test_cases / ldim0) * ldim0 != num_test_cases)
+  if(ldimsupplied != LDIM)
   {
-    div++;
+    //use the given dimension
+    ldim0 = ldimsupplied;
+  }
+  else
+  {
+    //calculate a dimension
+    int div = num_test_cases/ 999;
     if(div > 0)
-      ldim0 = num_test_cases / div;
+      ldim0 = num_test_cases/ (div+1);
+
+    //ensure that the dimensions will be properly distributed across 
+    while((num_test_cases / ldim0) * ldim0 != num_test_cases)
+    {
+      div++;
+      if(div > 0)
+        ldim0 = num_test_cases / div;
+    }
   }
 
   gdim[0] = num_test_cases;

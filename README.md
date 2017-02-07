@@ -29,7 +29,7 @@ III. How to run:
 
   2. Run:
 
-      ./test-on-gpu [number of tests]
+> >    ./test-on-gpu [number of tests]
 
 Compulsory arguments:
   - [number of tests]    how many tests to run
@@ -41,7 +41,7 @@ Optional arguments:
 
 Example:
 
-  ./gpu-test 100 -results Y -time Y
+>  ./gpu-test 100 -results Y -time Y
 
 
 IV. Related projects:

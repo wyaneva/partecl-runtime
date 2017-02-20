@@ -16,12 +16,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "options.h"
 #include "utils.h"
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim)
+// optional arguments
+// int* ldim - from gpu code
+// int* do_choose_device - from gpu code
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device) 
 {  
-  
   if(argc < 2)
   {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..) \n");
@@ -34,7 +37,9 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
     for(int i = 2; i < argc-1; i+=2)
     {
       char* label = argv[i];
-      if(strcmp(label, "-results") == 0) //compare results
+
+      //RESULTS
+      if(strcmp(label, "-results") == 0 && handle_results) //compare results
       {
         if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
         {
@@ -45,18 +50,30 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
         if(strcmp(argv[i+1],"Y") == 0)
           *handle_results = 1;
 
-        if(strcmp(argv[i+1],"N") == 0)
+        if(strcmp(argv[i+1],"N") == 0) 
           *handle_results = 0;
       }
-      else if(strcmp(label, "-runs") == 0) //number of runs
+
+      //RUNS
+      else if(strcmp(label, "-runs") == 0 && num_runs) //number of runs
       {
         *num_runs = atoi(argv[i+1]);
       }
-      else if(strcmp(label, "-ldim") == 0) //work-group size
+
+      //LDIM
+      else if(strcmp(label, "-ldim") == 0 && ldim) //work-group size
       {
         *ldim = atoi(argv[i+1]);
       }
-      else if(strcmp(label, "-time") == 0) //do time
+
+      //DO_CHOOSE_DEVICE
+      else if(strcmp(label, "-choose") == 0 && do_choose_device) //do choose device
+      {
+        *do_choose_device = atoi(argv[i+1]);
+      }
+
+      //TIME
+      else if(strcmp(label, "-time") == 0 && do_time) //do time
       {
         if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
         {
@@ -77,7 +94,7 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
       }
     }
   }
-  
+
   return SUCCESS;
 }
 

@@ -18,9 +18,95 @@
 #define CL_UTILS_H
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
 #include "cl-utils.h"
+
+void choose_device(cl_platform_id *rplatform, cl_device_id *rdevice, bool do_choose)
+{
+  cl_int err;
+
+  //get the platforms
+  cl_uint platform_count;
+  err = clGetPlatformIDs(0, NULL, &platform_count);
+  if(err != CL_SUCCESS)
+    printf("error: clGetPlatformIDs: %d\n", err);
+  cl_platform_id *platforms = (cl_platform_id *)malloc(platform_count*sizeof(cl_platform_id));
+  err = clGetPlatformIDs(platform_count, platforms, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetPlatformIDs: %d\n", err);
+
+  int platformidx;
+  if(!do_choose)
+  {
+    platformidx = 0;
+  }
+  else
+  {
+    //prompt user
+    printf("Please choose a platform: \n");
+    for(int i = 0; i < (int)platform_count; i++) 
+    {
+      cl_platform_id platform = platforms[i];
+      char buf[100];
+      err = clGetPlatformInfo(platform, CL_PLATFORM_NAME, sizeof(buf), buf, NULL);
+      if(err != CL_SUCCESS)
+        printf("error: clGetPlatformInfo: %d\n", err);
+      else
+        printf("[%d]: %s\n", i, buf);
+    }
+    scanf("%d", &platformidx);
+    if(platformidx < 0 || platformidx >= (int)platform_count)
+    {
+      printf("%d is not a valid platform. Defaulting to platform 0.\n", platformidx);
+      platformidx = 0;
+    }
+  }
+  *rplatform = platforms[platformidx];
+
+  //get the devices
+  cl_uint dev_count;
+  err = clGetDeviceIDs(*rplatform, CL_DEVICE_TYPE_ALL, 0, NULL, &dev_count);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceIDs: %d\n", err);
+  cl_device_id *devices = (cl_device_id *)malloc(dev_count*sizeof(cl_device_id));
+  err = clGetDeviceIDs(*rplatform, CL_DEVICE_TYPE_ALL, dev_count, devices, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceIDs: %d\n", err);
+
+  int deviceidx;
+  if(!do_choose)
+  {
+    deviceidx = 0;
+  }
+  else
+  {
+    //prompt the user
+    printf("Please choose a device: \n");
+    for(int i = 0; i < (int)dev_count; i++)
+    {
+      cl_device_id dev = devices[i];
+
+      char buf[100];
+      err = clGetDeviceInfo(dev, CL_DEVICE_NAME, sizeof(buf), buf, NULL);
+      if(err != CL_SUCCESS)
+        printf("error: clGetDeviceInfo: %d\n", err);
+      else
+        printf("[%d]: %s \n", i, buf);
+    }
+    scanf("%d", &deviceidx);
+    if(deviceidx < 0 || deviceidx >= (int)dev_count)
+    {
+      printf("%d is not a valid device index. Defaulting to platform 0.\n", deviceidx);
+      deviceidx = 0;
+    }
+  }
+  *rdevice = devices[deviceidx];
+
+  free(platforms);
+  free(devices);
+}
 
 cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char const *kernel_name, char const *options)
 {
@@ -90,33 +176,13 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
   return kernel;
 }
 
-void create_context_on_gpu(cl_context *context, cl_command_queue *queue)
+void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do_choose_device)
 {
   cl_int err;
 
-  //get platforms - choose the first platform
-  cl_uint platform_count;
-  err = clGetPlatformIDs(0, NULL, &platform_count);
-  if(err != CL_SUCCESS)
-    printf("error: clGetPlatformIDs: %d\n", err);
-  cl_platform_id *platforms = (cl_platform_id *)malloc(platform_count*sizeof(cl_platform_id));
-  err = clGetPlatformIDs(platform_count, platforms, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clGetPlatformIDs: %d\n", err);
-
-  //get devices - choose the first device
-  //TODO: Add asking for which device
-  cl_uint dev_count;
-  err = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 0, NULL, &dev_count);
-  if(err != CL_SUCCESS)
-    printf("error: clGetDeviceIDs: %d\n", err);
-  cl_device_id *devices = (cl_device_id *)malloc(dev_count*sizeof(cl_device_id));
-  err = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, dev_count, devices, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clGetDeviceIDs: %d\n", err);
-
-  cl_platform_id plat = platforms[0];
-  cl_device_id dev = devices[0];
+  cl_device_id dev;
+  cl_platform_id plat; 
+  choose_device(&plat, &dev, do_choose_device);
 
   //print the device info:
   //name
@@ -157,9 +223,6 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
     printf("Version: %s \n", version);
-
-  free(platforms);
-  free(devices);
 
   // create a context
   cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties) plat, 0};

@@ -52,9 +52,10 @@ int main(int argc, char **argv)
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int ldim0 = LDIM;
+  int do_choose_device = DO_CHOOSE_DEVICE;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
   cl_context ctx;
   cl_command_queue queue;
   cl_int err;
-  create_context_on_gpu(&ctx, &queue);
+  create_context_on_gpu(&ctx, &queue, do_choose_device);
 
   //allocate cpu and gpu memory for inputs
   /*

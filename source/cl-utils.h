@@ -20,7 +20,7 @@
 #include <CL/cl.h>
 
 void choose_device(cl_platform_id*, cl_device_id*, bool);
-void create_context_on_gpu(cl_context*, cl_command_queue*, bool);
+void create_context_on_gpu(cl_context*, cl_command_queue*, cl_device_id*, bool);
 cl_kernel kernel_from_string(cl_context, char const*, char const*, char const*);
 
 #endif

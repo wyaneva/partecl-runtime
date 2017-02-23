@@ -176,18 +176,17 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
   return kernel;
 }
 
-void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do_choose_device)
+void create_context_on_gpu(cl_context *context, cl_command_queue *queue, cl_device_id *dev, bool do_choose_device)
 {
   cl_int err;
 
-  cl_device_id dev;
   cl_platform_id plat; 
-  choose_device(&plat, &dev, do_choose_device);
+  choose_device(&plat, dev, do_choose_device);
 
   //print the device info:
   //name
   char buf[100];
-  err = clGetDeviceInfo(dev, CL_DEVICE_NAME, sizeof(buf), buf, NULL);
+  err = clGetDeviceInfo(*dev, CL_DEVICE_NAME, sizeof(buf), buf, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
@@ -195,7 +194,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do
 
   //number of compute units
   cl_uint num_compute_units;
-  err = clGetDeviceInfo(dev, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(num_compute_units), &num_compute_units, NULL);
+  err = clGetDeviceInfo(*dev, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(num_compute_units), &num_compute_units, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
@@ -203,7 +202,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do
 
   //work-group size
   size_t workgroup_size;
-  err = clGetDeviceInfo(dev, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(workgroup_size), &workgroup_size, NULL);
+  err = clGetDeviceInfo(*dev, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(workgroup_size), &workgroup_size, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
@@ -211,14 +210,14 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do
 
   //local mem size
   size_t local_memory_size;
-  err = clGetDeviceInfo(dev, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_memory_size), &local_memory_size, NULL);
+  err = clGetDeviceInfo(*dev, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_memory_size), &local_memory_size, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
     printf("Local memory size (in bytes): %ld \n", local_memory_size);
 
   char version[100];
-  err = clGetDeviceInfo(dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
+  err = clGetDeviceInfo(*dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
   if(err != CL_SUCCESS)
     printf("error: clGetDeviceInfo: %d\n", err);
   else
@@ -227,7 +226,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do
   // create a context
   cl_context_properties cps[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties) plat, 0};
 
-  *context = clCreateContext(cps, 1, &dev, NULL, NULL, &err);
+  *context = clCreateContext(cps, 1, dev, NULL, NULL, &err);
   if(err != CL_SUCCESS)
     printf("error: clCreateContext: %d\n", err);
 
@@ -237,7 +236,7 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, bool do
 
    if (queue)
    {
-     *queue = clCreateCommandQueue(*context, dev, qprops, &err);
+     *queue = clCreateCommandQueue(*context, *dev, qprops, &err);
      if(err != CL_SUCCESS)
        printf("error: clCreateCommandQueue: %d\n", err);
    }

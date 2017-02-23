@@ -36,7 +36,7 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
-void calculate_dimensions(size_t[3], size_t[3], int, int);
+void calculate_dimensions(cl_device_id*, size_t[3], size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
@@ -70,7 +70,8 @@ int main(int argc, char **argv)
   cl_context ctx;
   cl_command_queue queue;
   cl_int err;
-  create_context_on_gpu(&ctx, &queue, do_choose_device);
+  cl_device_id device;
+  create_context_on_gpu(&ctx, &queue, &device, do_choose_device);
 
   //allocate cpu and gpu memory for inputs
   /*
@@ -108,8 +109,8 @@ int main(int argc, char **argv)
     read_expected_results(exp_results, num_test_cases);
 
   //clalculate dimensions
-  size_t gdim[3], ldim[3];
-  calculate_dimensions(gdim, ldim, num_test_cases, ldim0);
+  size_t gdim[3], ldim[3]; //assuming three dimensions
+  calculate_dimensions(&device, gdim, ldim, num_test_cases, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
   if(do_time)
@@ -211,8 +212,21 @@ int main(int argc, char **argv)
   free(exp_results);
 }
 
-void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
+void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
 {
+  //find out maximum dimensions for device
+  cl_int err;
+
+  cl_uint num_dims;
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(num_dims), &num_dims, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n", err);
+
+  size_t dims[num_dims];
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims), dims, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+
   //calculate local dimension
   int ldim0 = num_test_cases;
 
@@ -224,7 +238,7 @@ void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases, in
   else
   {
     //calculate a dimension
-    int div = num_test_cases/ 999;
+    int div = num_test_cases/ dims[0]; //maximum size per work-group
     if(div > 0)
       ldim0 = num_test_cases/ (div+1);
 

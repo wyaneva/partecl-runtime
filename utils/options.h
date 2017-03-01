@@ -22,8 +22,9 @@
 #define NUM_RUNS       1
 #define DO_TIME        0
 #define DO_CHOOSE_DEVICE      0
+#define DO_OVERLAP     0
 #define LDIM           0
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device);
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device, int* do_overlap);
 
 #endif

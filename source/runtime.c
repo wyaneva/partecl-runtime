@@ -53,15 +53,16 @@ int main(int argc, char **argv)
   int do_time = DO_TIME;
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
+  int do_overlap = DO_OVERLAP;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device, &do_overlap) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases
   struct partecl_input * inputs;
-  size_t size = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input*)malloc(size);
+  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input*)malloc(size_inputs);
   struct partecl_result * results;
   size_t size_results = sizeof(struct partecl_result) * num_test_cases;
   results = (struct partecl_result *)malloc(size_results);
@@ -123,7 +124,7 @@ int main(int argc, char **argv)
   for(int i=0; i < num_runs; i++)
   {
    //allocate device memory
-    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size, NULL, &err);
+    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
@@ -135,7 +136,7 @@ int main(int argc, char **argv)
 
     //transfer input to device
     cl_event event_inputs;
-    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size, inputs, 0, NULL, &event_inputs);
+    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size_inputs, inputs, 0, NULL, &event_inputs);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueWriteBuffer: %d\n", err);
     
@@ -150,14 +151,14 @@ int main(int argc, char **argv)
 
     //launch kernel
     cl_event event_kernel = 0;
-    err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, &event_kernel);
+    err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 1, &event_inputs, &event_kernel);
     //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueNDRangeKernel: %d\n", err);
 
     //transfer results back
     cl_event event_results;
-    err = clEnqueueReadBuffer(queue, buf_results, CL_FALSE, 0, size_results, results, 0, NULL, &event_results);
+    err = clEnqueueReadBuffer(queue, buf_results, CL_FALSE, 0, size_results, results, 1, &event_kernel, &event_results);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueReadBuffer: %d\n", err);
 

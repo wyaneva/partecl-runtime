@@ -20,10 +20,27 @@
 #include "options.h"
 #include "utils.h"
 
+int parseYNOption(char** argv, int i, char* arg, int* value)
+{
+  if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
+  {
+    printf("Please, provide value Y or N for arg %s.\n", arg);
+    return FAIL;
+  }
+        
+  if(strcmp(argv[i+1],"Y") == 0)
+    *value = 1;
+  else
+    *value = 0;
+
+  return SUCCESS;
+}
+
 // optional arguments
 // int* ldim - from gpu code
 // int* do_choose_device - from gpu code
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device) 
+// int* do_overlap - from gpu code
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device, int* do_overlap) 
 {  
   if(argc < 2)
   {
@@ -34,24 +51,28 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
 
   if(argc > 2)
   {
-    for(int i = 2; i < argc-1; i+=2)
+    for(int i = 2; i < argc; i+=2)
     {
       char* label = argv[i];
+
+      if(i == argc-1)
+      {
+        printf("Please, provide a value for arg %s.\n", label);
+        return FAIL;
+      }
 
       //RESULTS
       if(strcmp(label, "-results") == 0 && handle_results) //compare results
       {
-        if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
-        {
-          printf("Please, provide value Y or N for arg -c.\n");
+        if(!parseYNOption(argv, i, label, handle_results))
           return FAIL;
-        }
-        
-        if(strcmp(argv[i+1],"Y") == 0)
-          *handle_results = 1;
+      }
 
-        if(strcmp(argv[i+1],"N") == 0) 
-          *handle_results = 0;
+      //TIME
+      else if(strcmp(label, "-time") == 0 && do_time) //do time
+      {
+        if(!parseYNOption(argv, i, label, do_time))
+          return FAIL;
       }
 
       //RUNS
@@ -69,23 +90,15 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
       //DO_CHOOSE_DEVICE
       else if(strcmp(label, "-choose") == 0 && do_choose_device) //do choose device
       {
-        *do_choose_device = atoi(argv[i+1]);
+        if(!parseYNOption(argv, i, label, do_choose_device))
+          return FAIL;
       }
 
-      //TIME
-      else if(strcmp(label, "-time") == 0 && do_time) //do time
+      //OVERLAP
+      else if(strcmp(label, "-overlap") == 0 && do_overlap)
       {
-        if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
-        {
-          printf("Please, provide value Y or N for arg -t.\n");
+        if(!parseYNOption(argv, i, label, do_overlap))
           return FAIL;
-        }
-        
-        if(strcmp(argv[i+1],"Y") == 0)
-          *do_time = 1;
-
-        if(strcmp(argv[i+1],"N") == 0)
-          *do_time = 0;
       }
       else
       {

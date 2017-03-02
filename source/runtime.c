@@ -69,10 +69,13 @@ int main(int argc, char **argv)
 
   //create queue and context
   cl_context ctx;
-  cl_command_queue queue;
+  cl_command_queue queue_io;
+  cl_command_queue queue_kernel;
   cl_int err;
   cl_device_id device;
-  create_context_on_gpu(&ctx, &queue, &device, do_choose_device);
+  create_context_on_gpu(&ctx, &device, do_choose_device);
+  create_command_queue(&queue_io, &ctx, &device);
+  create_command_queue(&queue_kernel, &ctx, &device);
 
   //allocate cpu and gpu memory for inputs
   /*
@@ -121,14 +124,34 @@ int main(int argc, char **argv)
     printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
+  //prep for overlapping
+  int chunksize = 8192; //test cases
+  int num_chunks = 1;
+  if(do_overlap)
+  {
+    //calculate size of chunks
+    //for rspeed01, cheetah and swift get saturated at 2^12 threads (8192)
+    if(num_test_cases <= chunksize)
+    {
+      do_overlap = false;
+    }
+    else
+    {
+      num_chunks = num_test_cases/chunksize + 1; //rounded-up
+    }
+  }
+
   for(int i=0; i < num_runs; i++)
   {
-   //allocate device memory
-    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
+    size_t buf_inputs_size = size_inputs;
+    size_t buf_results_size = size_results; 
+
+    //allocate device memory
+    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_inputs_size, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
-    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
+    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_results_size, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
@@ -136,7 +159,7 @@ int main(int argc, char **argv)
 
     //transfer input to device
     cl_event event_inputs;
-    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size_inputs, inputs, 0, NULL, &event_inputs);
+    err = clEnqueueWriteBuffer(queue_io, buf_inputs, CL_FALSE, 0, size_inputs, inputs, 0, NULL, &event_inputs);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueWriteBuffer: %d\n", err);
     
@@ -151,20 +174,25 @@ int main(int argc, char **argv)
 
     //launch kernel
     cl_event event_kernel = 0;
-    err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 1, &event_inputs, &event_kernel);
+    err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, NULL, gdim, ldim, 1, &event_inputs, &event_kernel);
     //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueNDRangeKernel: %d\n", err);
 
     //transfer results back
     cl_event event_results;
-    err = clEnqueueReadBuffer(queue, buf_results, CL_FALSE, 0, size_results, results, 1, &event_kernel, &event_results);
+    err = clEnqueueReadBuffer(queue_io, buf_results, CL_FALSE, 0, size_results, results, 1, &event_kernel, &event_results);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueReadBuffer: %d\n", err);
 
-    err = clFinish(queue);
+    //finish the kernels
+    err = clFinish(queue_kernel);
     if(err != CL_SUCCESS)
-      printf("error: clFinish: %d\n", err);
+      printf("error: clFinish queue_kernel: %d\n", err);
+
+    err = clFinish(queue_io);
+    if(err != CL_SUCCESS)
+      printf("error: clFinish queue_io: %d\n", err);
 
     get_timestamp(&ete_end);
 

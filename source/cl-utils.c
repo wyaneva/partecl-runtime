@@ -176,7 +176,7 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source, char
   return kernel;
 }
 
-void create_context_on_gpu(cl_context *context, cl_command_queue *queue, cl_device_id *dev, bool do_choose_device)
+void create_context_on_gpu(cl_context *context, cl_device_id *dev, bool do_choose_device)
 {
   cl_int err;
 
@@ -229,6 +229,11 @@ void create_context_on_gpu(cl_context *context, cl_command_queue *queue, cl_devi
   *context = clCreateContext(cps, 1, dev, NULL, NULL, &err);
   if(err != CL_SUCCESS)
     printf("error: clCreateContext: %d\n", err);
+}
+
+void create_command_queue(cl_command_queue *queue, cl_context *context, cl_device_id *dev)
+{
+  cl_int err;
 
   // create a command queue
   cl_command_queue_properties qprops = 0;

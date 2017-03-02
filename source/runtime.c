@@ -41,23 +41,24 @@ void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
 {
-  double trans_inputs = 0.0;
-  double trans_results = 0.0;
-  double time_gpu = 0.0;
-  double end_to_end = 0.0;
-  struct timespec ete_start, ete_end;
-  cl_ulong ev_start_time, ev_end_time;
-
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
-  int do_overlap = DO_OVERLAP;
+  int num_chunks = NUM_CHUNKS;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device, &do_overlap) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device, &num_chunks) == FAIL)
     return 0;
+
+  //check that the specified number of chunks divides the number of tests equally
+  if(num_test_cases % num_chunks != 0)
+  {
+    printf("Please provide a number of chunks which divides the number of test cases equally.\n");
+    return 0;
+  }
+  int chunksize = num_test_cases/num_chunks;
 
   //allocate CPU memory and generate test cases
   struct partecl_input * inputs;
@@ -128,66 +129,59 @@ int main(int argc, char **argv)
     printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
-  //prep for overlapping
-  int chunksize = 8192; //test cases
-  int num_chunks = 1;
-  if(do_overlap)
-  {
-    //calculate size of chunks
-    //for rspeed01, cheetah and swift get saturated at 2^12 threads (8192)
-    if(num_test_cases <= chunksize)
-    {
-      do_overlap = false;
-    }
-    else
-    {
-      num_chunks = num_test_cases/chunksize + 1; //rounded-up
-    }
-  }
-
   for(int i=0; i < num_runs; i++)
   {
-    size_t buf_inputs_size = size_inputs;
-    size_t buf_results_size = size_results; 
+    //timing variables
+    double trans_inputs = 0.0;
+    double trans_results = 0.0;
+    double time_gpu = 0.0;
+    double end_to_end = 0.0;
+    struct timespec ete_start, ete_end;
+    cl_ulong ev_start_time, ev_end_time;
 
     //allocate device memory
-    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_inputs_size, NULL, &err);
+    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
-    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_results_size, NULL, &err);
+    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
+
+    //declare events
+    cl_event event_inputs[num_chunks];
+    cl_event event_kernel[num_chunks];
+    cl_event event_results[num_chunks];
 
     get_timestamp(&ete_start);
 
-    //transfer input to device
-    cl_event event_inputs;
-    err = clEnqueueWriteBuffer(queue_io, buf_inputs, CL_FALSE, 0, size_inputs, inputs, 0, NULL, &event_inputs);
-    if(err != CL_SUCCESS)
-      printf("error: clEnqueueWriteBuffer: %d\n", err);
+    for(int j = 0; j < num_chunks; j++)
+    {
+      //transfer input to device
+      err = clEnqueueWriteBuffer(queue_io, buf_inputs, CL_FALSE, sizeof(partecl_input)*chunksize*j, size_inputs/num_chunks, inputs+chunksize*j, 0, NULL, &event_inputs[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
     
-    //add kernel arguments
-    err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
-    if(err != CL_SUCCESS)
-      printf("error: clSetKernelArg 0: %d\n", err);
+      //add kernel arguments
+      err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
+      if(err != CL_SUCCESS)
+        printf("error: clSetKernelArg 0: %d\n", err);
 
-    err = clSetKernelArg(knl, 1, sizeof(cl_mem), &buf_results);
-    if(err != CL_SUCCESS)
-      printf("error: clSetKernelArg 1: %d\n", err);
+      err = clSetKernelArg(knl, 1, sizeof(cl_mem), &buf_results);
+      if(err != CL_SUCCESS)
+        printf("error: clSetKernelArg 1: %d\n", err);
 
-    //launch kernel
-    cl_event event_kernel = 0;
-    err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, NULL, gdim, ldim, 1, &event_inputs, &event_kernel);
-    //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
-    if(err != CL_SUCCESS)
-      printf("error: clEnqueueNDRangeKernel: %d\n", err);
+      //launch kernel
+      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, NULL, gdim, ldim, 1, &event_inputs[j], &event_kernel[j]);
+      //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
+      if(err != CL_SUCCESS)
+        printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
-    //transfer results back
-    cl_event event_results;
-    err = clEnqueueReadBuffer(queue_io, buf_results, CL_FALSE, 0, size_results, results, 1, &event_kernel, &event_results);
-    if(err != CL_SUCCESS)
-      printf("error: clEnqueueReadBuffer: %d\n", err);
+      //transfer results back
+      err = clEnqueueReadBuffer(queue_io, buf_results, CL_FALSE, sizeof(partecl_result)*chunksize*j, size_results/num_chunks, results+chunksize*j, 1, &event_kernel[j], &event_results[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+    }
 
     //finish the kernels
     err = clFinish(queue_kernel);
@@ -210,16 +204,20 @@ int main(int argc, char **argv)
       printf("error: clReleaseMemObjec: %d\n", err);
     
     //gather performance data
-    clGetEventProfilingInfo(event_inputs, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
-    clGetEventProfilingInfo(event_inputs, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
-    trans_inputs = (double)(ev_end_time - ev_start_time)/1000000;
-    clGetEventProfilingInfo(event_results, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
-    clGetEventProfilingInfo(event_results, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
-    trans_results = (double)(ev_end_time - ev_start_time)/1000000;
+    for(int j = 0; j < num_chunks; j++)
+    {
+      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
+      trans_inputs = (double)(ev_end_time - ev_start_time)/1000000;
 
-    clGetEventProfilingInfo(event_kernel, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
-    clGetEventProfilingInfo(event_kernel, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
-    time_gpu = (double)(ev_end_time - ev_start_time)/1000000;
+      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
+      trans_results = (double)(ev_end_time - ev_start_time)/1000000;
+
+      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &ev_end_time, NULL);
+      time_gpu = (double)(ev_end_time - ev_start_time)/1000000;
+    }
 
     end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; //in ms
     if(do_time)
@@ -229,15 +227,18 @@ int main(int argc, char **argv)
     if(do_compare_results)
       compare_results(results, exp_results, num_test_cases);
 
-    err = clReleaseEvent(event_inputs);
-    if(err != CL_SUCCESS)
-      printf("error: clReleaseEvent (event_inputs): %d\n", err);
-    err = clReleaseEvent(event_results);
-    if(err != CL_SUCCESS)
-      printf("error: clReleaseEvent (event_results): %d\n", err);
-    err = clReleaseEvent(event_kernel);
-    if(err != CL_SUCCESS)
-      printf("error: clReleaseEvent (event_kernel): %d\n", err);
+    for(int j = 0; j < num_chunks; j++)
+    {
+      err = clReleaseEvent(event_inputs[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clReleaseEvent (event_inputs) %d: %d\n", j, err);
+      err = clReleaseEvent(event_results[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clReleaseEvent (event_results) %d: %d\n", j, err);
+      err = clReleaseEvent(event_kernel[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clReleaseEvent (event_kernel) %d: %d\n", j, err);
+    }
   }
 
   free(inputs);

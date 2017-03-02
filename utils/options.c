@@ -39,12 +39,12 @@ int parseYNOption(char** argv, int i, char* arg, int* value)
 // optional arguments
 // int* ldim - from gpu code
 // int* do_choose_device - from gpu code
-// int* do_overlap - from gpu code
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device, int* do_overlap) 
+// int* num_chunks - from gpu code
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device, int* num_chunks) 
 {  
   if(argc < 2)
   {
-    printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..) \n");
+    printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) (-chunks ..number..) \n");
     return FAIL;
   }
   *num_test_cases = atoi(argv[1]);
@@ -95,10 +95,14 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
       }
 
       //OVERLAP
-      else if(strcmp(label, "-overlap") == 0 && do_overlap)
+      else if(strcmp(label, "-chunks") == 0 && num_chunks)
       {
-        if(!parseYNOption(argv, i, label, do_overlap))
+        *num_chunks = atoi(argv[i+1]);
+        if(*num_chunks < 1)
+        {
+          printf("Please, provide a number of overlapping input chunks >= 1.\n");
           return FAIL;
+        }
       }
       else
       {

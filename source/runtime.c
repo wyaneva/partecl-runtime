@@ -96,7 +96,11 @@ int main(int argc, char **argv)
 
   //create kernel
   char *knl_text = read_file(GPU_SOURCE);
-  //add include directory for the kernel header files (structs & clClibc)
+  if(!knl_text)
+  {
+    printf("Couldn't read file %s. Exiting!\n", GPU_SOURCE);
+    return -1;
+  }
 
   cl_kernel knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
   free(knl_text);

@@ -24,6 +24,7 @@ char *read_file(const char *filename)
   {
     printf("Reading file %s \n", filename);
     perror(" ERROR");
+    return NULL;
   }
 
   // figure out file size

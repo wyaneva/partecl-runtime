@@ -16,12 +16,32 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "options.h"
 #include "utils.h"
 
-int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim)
+int parseYNOption(char** argv, int i, char* arg, int* value)
+{
+  if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
+  {
+    printf("Please, provide value Y or N for arg %s.\n", arg);
+    return FAIL;
+  }
+        
+  if(strcmp(argv[i+1],"Y") == 0)
+    *value = 1;
+  else
+    *value = 0;
+
+  return SUCCESS;
+}
+
+// optional arguments
+// int* ldim - from gpu code
+// int* do_choose_device - from gpu code
+// int* do_overlap - from gpu code
+int read_options(int argc, char **argv, int* num_test_cases, int* handle_results, int* do_time, int* num_runs, int* ldim, int* do_choose_device, int* do_overlap) 
 {  
-  
   if(argc < 2)
   {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) (-time Y/N) (-runs ..number..) \n");
@@ -31,44 +51,54 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
 
   if(argc > 2)
   {
-    for(int i = 2; i < argc-1; i+=2)
+    for(int i = 2; i < argc; i+=2)
     {
       char* label = argv[i];
-      if(strcmp(label, "-results") == 0) //compare results
-      {
-        if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
-        {
-          printf("Please, provide value Y or N for arg -c.\n");
-          return FAIL;
-        }
-        
-        if(strcmp(argv[i+1],"Y") == 0)
-          *handle_results = 1;
 
-        if(strcmp(argv[i+1],"N") == 0)
-          *handle_results = 0;
+      if(i == argc-1)
+      {
+        printf("Please, provide a value for arg %s.\n", label);
+        return FAIL;
       }
-      else if(strcmp(label, "-runs") == 0) //number of runs
+
+      //RESULTS
+      if(strcmp(label, "-results") == 0 && handle_results) //compare results
+      {
+        if(!parseYNOption(argv, i, label, handle_results))
+          return FAIL;
+      }
+
+      //TIME
+      else if(strcmp(label, "-time") == 0 && do_time) //do time
+      {
+        if(!parseYNOption(argv, i, label, do_time))
+          return FAIL;
+      }
+
+      //RUNS
+      else if(strcmp(label, "-runs") == 0 && num_runs) //number of runs
       {
         *num_runs = atoi(argv[i+1]);
       }
-      else if(strcmp(label, "-ldim") == 0) //work-group size
+
+      //LDIM
+      else if(strcmp(label, "-ldim") == 0 && ldim) //work-group size
       {
         *ldim = atoi(argv[i+1]);
       }
-      else if(strcmp(label, "-time") == 0) //do time
-      {
-        if(strcmp(argv[i+1],"Y") != 0 && strcmp(argv[i+1],"N") != 0)
-        {
-          printf("Please, provide value Y or N for arg -t.\n");
-          return FAIL;
-        }
-        
-        if(strcmp(argv[i+1],"Y") == 0)
-          *do_time = 1;
 
-        if(strcmp(argv[i+1],"N") == 0)
-          *do_time = 0;
+      //DO_CHOOSE_DEVICE
+      else if(strcmp(label, "-choose") == 0 && do_choose_device) //do choose device
+      {
+        if(!parseYNOption(argv, i, label, do_choose_device))
+          return FAIL;
+      }
+
+      //OVERLAP
+      else if(strcmp(label, "-overlap") == 0 && do_overlap)
+      {
+        if(!parseYNOption(argv, i, label, do_overlap))
+          return FAIL;
       }
       else
       {
@@ -77,7 +107,7 @@ int read_options(int argc, char **argv, int* num_test_cases, int* handle_results
       }
     }
   }
-  
+
   return SUCCESS;
 }
 

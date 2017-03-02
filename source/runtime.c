@@ -36,7 +36,7 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
-void calculate_dimensions(size_t[3], size_t[3], int, int);
+void calculate_dimensions(cl_device_id*, size_t[3], size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
@@ -52,24 +52,30 @@ int main(int argc, char **argv)
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int ldim0 = LDIM;
+  int do_choose_device = DO_CHOOSE_DEVICE;
+  int do_overlap = DO_OVERLAP;
   int num_test_cases = 1;
 
-  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0) == FAIL)
+  if(read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time, &num_runs, &ldim0, &do_choose_device, &do_overlap) == FAIL)
     return 0;
 
   //allocate CPU memory and generate test cases
   struct partecl_input * inputs;
-  size_t size = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input*)malloc(size);
+  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input*)malloc(size_inputs);
   struct partecl_result * results;
   size_t size_results = sizeof(struct partecl_result) * num_test_cases;
   results = (struct partecl_result *)malloc(size_results);
 
   //create queue and context
   cl_context ctx;
-  cl_command_queue queue;
+  cl_command_queue queue_io;
+  cl_command_queue queue_kernel;
   cl_int err;
-  create_context_on_gpu(&ctx, &queue);
+  cl_device_id device;
+  create_context_on_gpu(&ctx, &device, do_choose_device);
+  create_command_queue(&queue_io, &ctx, &device);
+  create_command_queue(&queue_kernel, &ctx, &device);
 
   //allocate cpu and gpu memory for inputs
   /*
@@ -111,8 +117,8 @@ int main(int argc, char **argv)
     read_expected_results(exp_results, num_test_cases);
 
   //clalculate dimensions
-  size_t gdim[3], ldim[3];
-  calculate_dimensions(gdim, ldim, num_test_cases, ldim0);
+  size_t gdim[3], ldim[3]; //assuming three dimensions
+  calculate_dimensions(&device, gdim, ldim, num_test_cases, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
   if(do_time)
@@ -122,14 +128,34 @@ int main(int argc, char **argv)
     printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
+  //prep for overlapping
+  int chunksize = 8192; //test cases
+  int num_chunks = 1;
+  if(do_overlap)
+  {
+    //calculate size of chunks
+    //for rspeed01, cheetah and swift get saturated at 2^12 threads (8192)
+    if(num_test_cases <= chunksize)
+    {
+      do_overlap = false;
+    }
+    else
+    {
+      num_chunks = num_test_cases/chunksize + 1; //rounded-up
+    }
+  }
+
   for(int i=0; i < num_runs; i++)
   {
-   //allocate device memory
-    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size, NULL, &err);
+    size_t buf_inputs_size = size_inputs;
+    size_t buf_results_size = size_results; 
+
+    //allocate device memory
+    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_inputs_size, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
-    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
+    cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, buf_results_size, NULL, &err);
     if(err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
@@ -137,7 +163,7 @@ int main(int argc, char **argv)
 
     //transfer input to device
     cl_event event_inputs;
-    err = clEnqueueWriteBuffer(queue, buf_inputs, CL_FALSE, 0, size, inputs, 0, NULL, &event_inputs);
+    err = clEnqueueWriteBuffer(queue_io, buf_inputs, CL_FALSE, 0, size_inputs, inputs, 0, NULL, &event_inputs);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueWriteBuffer: %d\n", err);
     
@@ -152,20 +178,25 @@ int main(int argc, char **argv)
 
     //launch kernel
     cl_event event_kernel = 0;
-    err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, &event_kernel);
+    err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, NULL, gdim, ldim, 1, &event_inputs, &event_kernel);
     //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueNDRangeKernel: %d\n", err);
 
     //transfer results back
     cl_event event_results;
-    err = clEnqueueReadBuffer(queue, buf_results, CL_FALSE, 0, size_results, results, 0, NULL, &event_results);
+    err = clEnqueueReadBuffer(queue_io, buf_results, CL_FALSE, 0, size_results, results, 1, &event_kernel, &event_results);
     if(err != CL_SUCCESS)
       printf("error: clEnqueueReadBuffer: %d\n", err);
 
-    err = clFinish(queue);
+    //finish the kernels
+    err = clFinish(queue_kernel);
     if(err != CL_SUCCESS)
-      printf("error: clFinish: %d\n", err);
+      printf("error: clFinish queue_kernel: %d\n", err);
+
+    err = clFinish(queue_io);
+    if(err != CL_SUCCESS)
+      printf("error: clFinish queue_io: %d\n", err);
 
     get_timestamp(&ete_end);
 
@@ -214,8 +245,21 @@ int main(int argc, char **argv)
   free(exp_results);
 }
 
-void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
+void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
 {
+  //find out maximum dimensions for device
+  cl_int err;
+
+  cl_uint num_dims;
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(num_dims), &num_dims, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n", err);
+
+  size_t dims[num_dims];
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims), dims, NULL);
+  if(err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+
   //calculate local dimension
   int ldim0 = num_test_cases;
 
@@ -227,7 +271,7 @@ void calculate_dimensions(size_t gdim[3], size_t ldim[3], int num_test_cases, in
   else
   {
     //calculate a dimension
-    int div = num_test_cases/ 999;
+    int div = num_test_cases/ dims[0]; //maximum size per work-group
     if(div > 0)
       ldim0 = num_test_cases/ (div+1);
 

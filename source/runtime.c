@@ -37,6 +37,7 @@
 #endif
 
 void calculate_dimensions(cl_device_id*, size_t[3], size_t[3], int, int);
+void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv)
@@ -70,13 +71,15 @@ int main(int argc, char **argv)
 
   //create queue and context
   cl_context ctx;
-  cl_command_queue queue_io;
+  cl_command_queue queue_inputs;
   cl_command_queue queue_kernel;
+  cl_command_queue queue_results;
   cl_int err;
   cl_device_id device;
   create_context_on_gpu(&ctx, &device, do_choose_device);
-  create_command_queue(&queue_io, &ctx, &device);
+  create_command_queue(&queue_inputs, &ctx, &device);
   create_command_queue(&queue_kernel, &ctx, &device);
+  create_command_queue(&queue_results, &ctx, &device);
 
   //allocate cpu and gpu memory for inputs
   /*
@@ -119,7 +122,7 @@ int main(int argc, char **argv)
 
   //clalculate dimensions
   size_t gdim[3], ldim[3]; //assuming three dimensions
-  calculate_dimensions(&device, gdim, ldim, num_test_cases, ldim0);
+  calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
   if(do_time)
@@ -158,7 +161,7 @@ int main(int argc, char **argv)
     for(int j = 0; j < num_chunks; j++)
     {
       //transfer input to device
-      err = clEnqueueWriteBuffer(queue_io, buf_inputs, CL_FALSE, sizeof(partecl_input)*chunksize*j, size_inputs/num_chunks, inputs+chunksize*j, 0, NULL, &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE, sizeof(partecl_input)*chunksize*j, size_inputs/num_chunks, inputs+chunksize*j, 0, NULL, &event_inputs[j]);
       if(err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
     
@@ -172,25 +175,32 @@ int main(int argc, char **argv)
         printf("error: clSetKernelArg 1: %d\n", err);
 
       //launch kernel
-      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, NULL, gdim, ldim, 1, &event_inputs[j], &event_kernel[j]);
+      size_t goffset[3];
+      calculate_global_offset(goffset, chunksize, j);
+
+      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim, ldim, 1, &event_inputs[j], &event_kernel[j]);
       //err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL, NULL);
       if(err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
       //transfer results back
-      err = clEnqueueReadBuffer(queue_io, buf_results, CL_FALSE, sizeof(partecl_result)*chunksize*j, size_results/num_chunks, results+chunksize*j, 1, &event_kernel[j], &event_results[j]);
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE, sizeof(partecl_result)*chunksize*j, size_results/num_chunks, results+chunksize*j, 1, &event_kernel[j], &event_results[j]);
       if(err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
     }
 
     //finish the kernels
+    err = clFinish(queue_inputs);
+    if(err != CL_SUCCESS)
+      printf("error: clFinish queue_inputs: %d\n", err);
+
     err = clFinish(queue_kernel);
     if(err != CL_SUCCESS)
       printf("error: clFinish queue_kernel: %d\n", err);
 
-    err = clFinish(queue_io);
+    err = clFinish(queue_results);
     if(err != CL_SUCCESS)
-      printf("error: clFinish queue_io: %d\n", err);
+      printf("error: clFinish queue_results: %d\n", err);
 
     get_timestamp(&ete_end);
 
@@ -291,6 +301,13 @@ void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3], 
   ldim[0] = ldim0;
   ldim[1] = 1;
   ldim[2] = 1;
+}
+
+void calculate_global_offset(size_t goffset[3], int chunksize, int j)
+{
+  goffset[0] = chunksize*j;
+  goffset[1] = 0;
+  goffset[2] = 0;
 }
 
 void read_expected_results(struct partecl_result *results, int num_test_cases)

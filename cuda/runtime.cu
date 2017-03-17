@@ -36,9 +36,14 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
-void calculate_dimensions(cl_device_id*, size_t[3], size_t[3], int, int);
+void calculate_dimensions(/*cl_device_id*,*/ size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
+
+__global__ void main_kernel(struct partecl_input* inputs, struct partecl_result* results)
+{
+  printf("Hello!\n");
+}
 
 int main(int argc, char **argv)
 {
@@ -97,6 +102,15 @@ int main(int argc, char **argv)
   if(read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
+//choose a CUDA device
+  int num_devs;
+  cudaGetDeviceCount(&num_devs);
+  printf("Num devices: %d\n", num_devs);
+  for(int i = 0; i < num_devs; i++)
+  {
+    //TODO:
+  }
+
   //unmap inputs from gpu memory
   /*
   err = clEnqueueUnmapMemObject(queue, buf_inputs, p_map_inputs, 0, NULL, NULL);
@@ -122,7 +136,7 @@ int main(int argc, char **argv)
 
   //clalculate dimensions
   size_t gdim[3], ldim[3]; //assuming three dimensions
-  calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
+  calculate_dimensions(/*&device, */gdim, ldim, chunksize, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
   if(do_time)
@@ -140,7 +154,7 @@ int main(int argc, char **argv)
     double time_gpu = 0.0;
     double end_to_end = 0.0;
     struct timespec ete_start, ete_end;
-    cl_ulong ev_start_time, ev_end_time;
+    //cl_ulong ev_start_time, ev_end_time;
 
     //allocate device memory
     partecl_input *d_inputs;
@@ -168,7 +182,6 @@ int main(int argc, char **argv)
     {
       //transfer input to device
       cudaMemcpy(d_inputs, inputs, size_inputs, cudaMemcpyHostToDevice);
-      cudaMemcpy(d_results, results, size_results, cudaMemcpyHostToDevice);
 
 //      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE, sizeof(partecl_input)*chunksize*j, size_inputs/num_chunks, inputs+chunksize*j, 0, NULL, &event_inputs[j]);
 //      if(err != CL_SUCCESS)
@@ -184,6 +197,9 @@ int main(int argc, char **argv)
 //        printf("error: clSetKernelArg 1: %d\n", err);
 
       //launch kernel
+      dim3 grid(gdim[0]/ldim[0], gdim[1]/ldim[1], gdim[2]/ldim[2]);
+      dim3 block(ldim[0], ldim[1], ldim[2]);
+      main_kernel<<<grid, block>>>(d_inputs, d_results);
 //      size_t goffset[3];
 //      calculate_global_offset(goffset, chunksize, j);
 //
@@ -194,6 +210,8 @@ int main(int argc, char **argv)
 
 
       //transfer results back
+      cudaMemcpy(results, d_results, size_results, cudaMemcpyDeviceToHost);
+
 //      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE, sizeof(partecl_result)*chunksize*j, size_results/num_chunks, results+chunksize*j, 1, &event_kernel[j], &event_results[j]);
 //      if(err != CL_SUCCESS)
 //        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
@@ -268,20 +286,22 @@ int main(int argc, char **argv)
   free(exp_results);
 }
 
-void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
+void calculate_dimensions(/*cl_device_id *device, */size_t gdim[3], size_t ldim[3], int num_test_cases, int ldimsupplied)
 {
   //find out maximum dimensions for device
-  cl_int err;
+//  cl_int err;
+//
+//  cl_uint num_dims;
+//  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(num_dims), &num_dims, NULL);
+//  if(err != CL_SUCCESS)
+//    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n", err);
 
-  cl_uint num_dims;
-  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(num_dims), &num_dims, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n", err);
+//  size_t dims[num_dims];
+//  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims), dims, NULL);
+//  if(err != CL_SUCCESS)
+//    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
 
-  size_t dims[num_dims];
-  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims), dims, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+  size_t dims[] = {256};
 
   //calculate local dimension
   int ldim0 = num_test_cases;

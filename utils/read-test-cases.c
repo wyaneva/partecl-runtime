@@ -113,19 +113,29 @@ int parseStdin(char** arg, char** bptr)
   while(**bptr == ' ')
     (*bptr)++;
 
-  //find the filename
-  char* filename;
-  copyToken(&filename, bptr);
-  //append ../kernel_gen/ directory to it, as input files will be copied there
-  char dirname[] = "../kernel-gen/";
-  char* dirandfile = (char*)malloc(sizeof(char*)*(strlen(dirname)+strlen(filename)+1));
-  *dirandfile = '\0';
-  strcat(dirandfile, dirname);
-  strcat(dirandfile, filename);
-  *arg = read_file(dirandfile);
+  //filename or string
+  if(**bptr == '\"')
+  {
+    //string
+    return parseString(arg, bptr);
+  }
+  else
+  {
+    //find the filename
+    char* filename;
+    copyToken(&filename, bptr);
+    //append ../kernel_gen/ directory to it, as input files will be copied there
+    char dirname[] = "../kernel-gen/";
+    char* dirandfile = (char*)malloc(sizeof(char*)*(strlen(dirname)+strlen(filename)+1));
+    *dirandfile = '\0';
+    strcat(dirandfile, dirname);
+    strcat(dirandfile, filename);
+    *arg = read_file(dirandfile);
 
-  free(filename);
-  free(dirandfile);
+    free(filename);
+    free(dirandfile);
+  }
+
   return SUCCESS;
 }
 

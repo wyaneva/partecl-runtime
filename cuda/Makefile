@@ -1,17 +1,23 @@
-EXECUTABLES = cuda-test 
-OBJECTS = options.o read-test-cases.o utils.o cpu-gen.o
+EXECUTABLES = cuda-test
+OBJECTS = kernel.o 
 
-GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/clClibc/\""
-CPU_FLAGS = -DGCC_COMPILED=1
+CL_CFLAGS = -I/opt/cuda-8.0.44/include
+CL_LDFLAGS = -L/opt/cuda-8.0.44/lib64
 
+all: $(EXECUTABLES)
 
-  CL_CFLAGS = -I/opt/cuda/include
-  CL_LDFLAGS = -L/opt/cuda/lib
+#compile cuda - device
+kernel.o: kernel.cu 
+	nvcc $^ -o $@ -arch=sm_20 -c
 
-all: $(objects)
-	clang $(CL_CFLAGS) $(CL_LDFLAGS) ../utils/options.c ../utils/read-test-cases.c ../utils/utils.c ../kernel-gen/cpu-gen.c 
+#compile c - host
+cuda-test: runtime.c \
+ 	  ../utils/options.c \
+          ../utils/read-test-cases.c \
+ 	  ../utils/utils.c \
+ 	  ../kernel-gen/cpu-gen.c \
+	  $(OBJECTS)
+	clang $^ -o $@ $(CL_CFLAGS) $(CL_LDFLAGS) -lrt -lcuda -lcudart -std=gnu99
 
-cuda-test: 
-	nvcc runtime.cu 
 clean:
 	rm -f $(EXECUTABLES) *.o

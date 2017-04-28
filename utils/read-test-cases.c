@@ -206,7 +206,7 @@ int read_test_cases(struct partecl_input* inputs, int num_test_cases)
       char* argparse;
       int parse = parseArg(&argparse, &bptr);
       
-      if(parse == PARSED_ARGV)
+      if(parse == PARSED_ARGV) //command-line arg
       {
         argc++;
         args = (char **)realloc(args, sizeof(char*)*(argc));
@@ -217,11 +217,17 @@ int read_test_cases(struct partecl_input* inputs, int num_test_cases)
         }
         args[argc-1] = argparse;
       }
-      else if(parse == PARSED_STDIN)
+      else if(parse == PARSED_STDIN) //stdin
       {
         //we only support one var for stdin for now
-        stdinc = 1;
-        stdins[0] = argparse;
+        stdinc++;
+        stdins = (char **)realloc(stdins, sizeof(char*)*stdinc);
+        if(stdins == NULL)
+        {
+          printf("realloc stdins: Failed reallocating memory!\n");
+          return FAIL;
+        }
+        stdins[stdinc-1] = argparse;
       }     
     }
 

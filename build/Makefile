@@ -1,6 +1,6 @@
 EXECUTABLES = gpu-test cpu-test
 
-GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/clClibc/\""
+GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/clClibc/ -DGPU_COMPILED=1 \""
 CPU_FLAGS = -DGCC_COMPILED=1
 
 all: $(EXECUTABLES)
@@ -14,7 +14,7 @@ gpu-test: ../source/runtime.c \
           ../utils/read-test-cases.c \
 	  ../utils/utils.c \
 	  ../kernel-gen/cpu-gen.c 
-	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS)
+	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) -Wno-macro-redefined 
 
 cpu-test: ../run-on-cpu/run-on-cpu.c \
 	  ../utils/options.c \
@@ -22,7 +22,7 @@ cpu-test: ../run-on-cpu/run-on-cpu.c \
 	  ../utils/utils.c \
 	  ../kernel-gen/cpu-gen.c \
 	  ../cpu-gen/test-cl.c
-	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(CPU_FLAGS) -fopenmp
+	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(CPU_FLAGS) -fopenmp -Wno-implicit-function-declaration 
 
 clean:
 	rm -f $(EXECUTABLES) *.o

@@ -28,7 +28,7 @@ int run_main(struct partecl_input input, struct partecl_result *result);
 
 void run_on_cpu(struct partecl_input input, struct partecl_result *result)
 {
-  (*result).test_case_num = input.test_case_num;
+  result->test_case_num = input.test_case_num;
   run_main(input, result);
 }
 

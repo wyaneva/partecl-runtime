@@ -49,3 +49,10 @@ IV. Related projects:
   1. **clClibc** (https://github.com/wyaneva/clClibc)
      An OpenCL implementation for the C standard library. 
      When using ParTeCL to test C programs, which use standard library functions, put clClibc in your home directory, so it can be found and built by the OpenCL compiler.
+
+
+V. Related publications
+-----------------------
+  1. **Compiler-Assisted Test Acceleration on GPUs for Embedded Software**, Vanya Yaneva, Ajitha Rajan, and Christophe Dubach, In *Proceedings of the 26th ACM SIGSOFT International Symposium on Software Testing and Analysis* (ISSTA 2017), July 2017
+  2. **ParTeCL - Parallel Testing Using OpenCL**, Vanya Yaneva, Ajitha Rajan, and Christophe Dubach, In *Proceedings of the 26th ACM SIGSOFT International Symposium on Software Testing and Analysis* (ISSTA 2017), July 2017
+

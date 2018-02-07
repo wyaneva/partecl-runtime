@@ -18,6 +18,7 @@
 #define CL_UTILS_H
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
+#include <stdbool.h>
 
 void choose_device(cl_platform_id *, cl_device_id *, bool);
 void create_context_on_gpu(cl_context *, cl_device_id *, bool);

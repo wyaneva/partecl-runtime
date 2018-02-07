@@ -1,6 +1,6 @@
 /*
  * Copyright 2016 Vanya Yaneva, The University of Edinburgh
- *   
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,24 +18,21 @@
 #define TIMING_H
 #include <time.h>
 
-static void get_timestamp(struct timespec *t)
-{
+static void get_timestamp(struct timespec *t) {
   clock_gettime(CLOCK_REALTIME, t);
 }
 
-static double timestamp_diff_in_seconds(struct timespec start, struct timespec end)
-{
+static double timestamp_diff_in_seconds(struct timespec start,
+                                        struct timespec end) {
   struct timespec temp;
-  if ((end.tv_nsec-start.tv_nsec)<0) 
-  {
-    temp.tv_sec = end.tv_sec-start.tv_sec-1;
-    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-  } else 
-  {
-    temp.tv_sec = end.tv_sec-start.tv_sec;
-    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  if ((end.tv_nsec - start.tv_nsec) < 0) {
+    temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+    temp.tv_nsec = 1000000000 + end.tv_nsec - start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec - start.tv_sec;
+    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
   }
-  return temp.tv_sec + 1e-9*temp.tv_nsec;
+  return temp.tv_sec + 1e-9 * temp.tv_nsec;
 }
 
 #endif

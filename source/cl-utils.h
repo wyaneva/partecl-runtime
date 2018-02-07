@@ -1,6 +1,6 @@
 /*
  * Copyright 2016 Vanya Yaneva, The University of Edinburgh
- *   
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,9 +19,10 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
 
-void choose_device(cl_platform_id*, cl_device_id*, bool);
-void create_context_on_gpu(cl_context*, cl_device_id*, bool);
-void create_command_queue(cl_command_queue*, cl_context*, cl_device_id*);
-cl_kernel kernel_from_string(cl_context, char const*, char const*, char const*);
+void choose_device(cl_platform_id *, cl_device_id *, bool);
+void create_context_on_gpu(cl_context *, cl_device_id *, bool);
+void create_command_queue(cl_command_queue *, cl_context *, cl_device_id *);
+cl_kernel kernel_from_string(cl_context, char const *, char const *,
+                             char const *);
 
 #endif

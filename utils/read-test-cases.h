@@ -1,6 +1,6 @@
 /*
  * Copyright 2016 Vanya Yaneva, The University of Edinburgh
- *   
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,6 @@
 
 #include "../kernel-gen/structs.h"
 
-int read_test_cases(struct partecl_input* , int);
+int read_test_cases(struct partecl_input *, int);
 
 #endif

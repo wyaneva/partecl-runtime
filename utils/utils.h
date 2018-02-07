@@ -1,6 +1,6 @@
 /*
  * Copyright 2016 Vanya Yaneva, The University of Edinburgh
- *   
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,13 +17,13 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-//return codes
+// return codes
 #define FAIL 0
 #define SUCCESS 1
 #define PARSED_ARGV 2
 #define PARSED_STDIN 3
 
-//read file
-char* read_file(const char*);
+// read file
+char *read_file(const char *);
 
 #endif

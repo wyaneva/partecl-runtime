@@ -1,6 +1,6 @@
 /*
  * Copyright 2016 Vanya Yaneva, The University of Edinburgh
- *   
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,11 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char *read_file(const char *filename)
-{
+char *read_file(const char *filename) {
   FILE *f = fopen(filename, "r");
-  if(!f)
-  {
+  if (!f) {
     printf("Reading file %s \n", filename);
     perror(" ERROR");
     return NULL;
@@ -34,7 +32,7 @@ char *read_file(const char *filename)
   fseek(f, 0, SEEK_SET);
 
   // allocate memory, slurp in entire file
-  char *result = (char *) malloc(size+1);
+  char *result = (char *)malloc(size + 1);
   fread(result, 1, size, f);
 
   // close, return

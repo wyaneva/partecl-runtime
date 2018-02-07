@@ -14,7 +14,7 @@ gpu-test: ../source/runtime.c \
           ../utils/read-test-cases.c \
 	  ../utils/utils.c \
 	  ../kernel-gen/cpu-gen.c 
-	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) -Wno-macro-redefined 
+	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) 
 
 cpu-test: ../run-on-cpu/run-on-cpu.c \
 	  ../utils/options.c \

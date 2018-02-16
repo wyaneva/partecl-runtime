@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GPU_SOURCE "../kernel-gen/test.cl"
+#define GPU_SOURCE "../kernel-gen/main.cl"
 #define KERNEL_NAME "main_kernel"
 
 // IMPORTANT: kernel options should be defined in Makefile, based on the

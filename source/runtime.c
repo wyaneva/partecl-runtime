@@ -15,6 +15,7 @@
  */
 
 #include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/fsm.h"
 #include "../utils/options.h"
 #include "../utils/read-test-cases.h"
 #include "../utils/timing.h"
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "fsm.c"
 
 #define GPU_SOURCE "../kernel-gen/main.cl"
 #define KERNEL_NAME "main_kernel"
@@ -39,6 +41,112 @@
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
+
+int main_cpu(int argc, char** argv) {
+
+  if (argc < 3) {
+    printf("Please provide an input filename and an input sequence.\n");
+    return 0;
+  }
+
+  // inputs
+  char *filename = argv[1];
+  //char *input_ptr = argv[2];
+
+  // read the fsm
+  // number of states
+  int num_transitions = read_parameter(filename, NUM_TRANSITIONS);
+  if (num_transitions == -1) {
+    printf("File %s does not specify a number of transitions. Exiting. \n",
+           filename);
+    return 0;
+  }
+
+  // input length
+  int input_length = read_parameter(filename, INPUT_LENGTH);
+  if (input_length == -1) {
+    printf("File %s does not specify input length. Exiting. \n", filename);
+    return 0;
+  }
+
+  // output length
+  int output_length = read_parameter(filename, OUTPUT_LENGTH);
+  if (output_length == -1) {
+    printf("File %s does not specify output length. Exiting. \n", filename);
+    return 0;
+  }
+
+  // transitions
+  struct transition transitions[num_transitions];
+  read_fsm(filename, transitions);
+
+ // output
+ //int length = strlen(input_ptr) / input_length * output_length;
+ //char output[length];
+ //char *output_ptr = output;
+
+  // TODO: Setup common buffers
+  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  cl_mem buf_transitions =
+      clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_transitions, NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_transitions: %d\n", err);
+
+  cl_mem buf_num_transitions =
+      clCreateBuffer(ctx, CL_MEM_READ_ONLY, sizeof(int), NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_num_transitions: %d\n", err);
+
+  cl_mem buf_input_length =
+      clCreateBuffer(ctx, CL_MEM_READ_ONLY, sizeof(int), NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_input_length: %d\n", err);
+
+  cl_mem buf_output_length =
+      clCreateBuffer(ctx, CL_MEM_READ_ONLY, sizeof(int), NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_output_length: %d\n", err);
+
+  cl_event event_common_buffers[4];
+  err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_FALSE, 0,
+                             size_transitions, transitions, 0, NULL,
+                             &event_common_buffers[0]);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_transitions: %d\n", err);
+  err = clEnqueueWriteBuffer(queue_inputs, buf_num_transitions, CL_FALSE, 0,
+                             sizeof(int), &num_transitions, 0, NULL,
+                             &event_common_buffers[1]);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_num_transitions: %d\n", err);
+
+  err = clEnqueueWriteBuffer(queue_inputs, buf_input_length, CL_FALSE, 0,
+                             sizeof(int), &input_length, 0, NULL,
+                             &event_common_buffers[2]);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_input_length: %d\n", err);
+
+  err = clEnqueueWriteBuffer(queue_inputs, buf_output_length, CL_FALSE, 0,
+                             sizeof(int), &output_length, 0, NULL,
+                             &event_common_buffers[3]);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_output_length: %d\n", err);
+
+  err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_transitions);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 2: %d\n", err);
+
+  err = clSetKernelArg(knl, 3, sizeof(cl_mem), &buf_num_transitions);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 3: %d\n", err);
+
+  err = clSetKernelArg(knl, 4, sizeof(cl_mem), &buf_input_length);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 4: %d\n", err);
+
+  err = clSetKernelArg(knl, 5, sizeof(cl_mem), &buf_output_length);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 5: %d\n", err);
+}
 
 int main(int argc, char **argv) {
   int do_compare_results = HANDLE_RESULTS;

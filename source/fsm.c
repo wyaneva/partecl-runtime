@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "../kernel-gen/fsm.h"
 
-void copyToken(char **token, char **bptr) {
+void copyWord(char **token, char **bptr) {
   // create current ptr
   char *cptr = *bptr;
 
@@ -52,7 +52,7 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
     if (line[0] == '.' && line[1] == param_char) {
       char *valueptr;
       char *lineptr = &line[3];
-      copyToken(&valueptr, &lineptr);
+      copyWord(&valueptr, &lineptr);
 
       param_value = strtol(valueptr, NULL, 10);
       break;
@@ -101,18 +101,18 @@ bool read_fsm(const char *filename, struct transition *transitions) {
     char *curtoken;
 
     // input
-    copyToken(&transptr->input, &lineptr);
+    copyWord(&transptr->input, &lineptr);
 
     // current state
-    copyToken(&curtoken, &lineptr);
+    copyWord(&curtoken, &lineptr);
     transptr->current_state = statetodecimal(curtoken);
 
     // next state
-    copyToken(&curtoken, &lineptr);
+    copyWord(&curtoken, &lineptr);
     transptr->next_state = statetodecimal(curtoken);
 
     // output
-    copyToken(&transptr->output, &lineptr);
+    copyWord(&transptr->output, &lineptr);
 
     transptr++;
   }

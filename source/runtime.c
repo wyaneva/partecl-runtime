@@ -29,7 +29,7 @@
 #include <string.h>
 #include "fsm.c"
 
-#define GPU_SOURCE "../kernel-gen/main-working.cl"
+#define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"
 
 // IMPORTANT: kernel options should be defined in Makefile, based on the

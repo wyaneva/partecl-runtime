@@ -14,7 +14,6 @@
 
 bool comparebinary(char binary1[], char binary2[], int length) {
 
-  printf("%s %s %d\n", binary1, binary2, length);
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
 
   for (int i = 0; i < length; i++) {
@@ -41,11 +40,9 @@ long long int lookup_symbol(int num_transitions,
                             long long int current_state, char input[],
                             int length, __global char *output_ptr) {
 
-  printf("%s\n", input);
   for (int i = 0; i < num_transitions; i++) {
 
     struct transition trans = transitions[i];
-    //printf("%ld\n", trans.current_state);
     if (trans.current_state == current_state &&
         comparebinary(input, trans.input, length)) {
       strcpy(output_ptr, trans.output);
@@ -78,20 +75,20 @@ __kernel void execute_fsm(__global struct partecl_input *inputs,
   __global char* output_ptr = result_gen->output;
 
   long long int current_state = transitions[0].current_state;
-  
+
   while (*input_ptr != '\0') {
     current_state = lookup_symbol(num_transitions, transitions, current_state,
                                   input_ptr, input_length, output_ptr);
 
-    printf("Hello!\n");
     if (current_state == -1) {
-      //return -1;
+      // return -1;
     }
 
-      input_ptr += input_length;
+    input_ptr += input_length;
     output_ptr += output_length;
   }
 
   //return current_state;
+  result_gen->length=strlen(input_gen.input_ptr) / input_length * output_length;
   result_gen->final_state = current_state;
 }

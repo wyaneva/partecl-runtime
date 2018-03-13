@@ -78,16 +78,17 @@ int main_cpu(int argc, char **argv, cl_context ctx, cl_kernel knl,
   }
 
   // transitions
-  struct transition transitions[num_transitions];
+  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  struct transition *transitions =
+      (struct transition *)malloc(size_transitions);
   read_fsm(filename, transitions);
 
  // original code ends here
 
  // setup buffers
  cl_int err;
- size_t size_transitions = sizeof(struct transition) * num_transitions;
  cl_mem buf_transitions =
-     clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_transitions, NULL, &err);
+     clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);
  if (err != CL_SUCCESS)
    printf("error: clCreateBuffer buf_transitions: %d\n", err);
 

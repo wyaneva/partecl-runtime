@@ -24,6 +24,27 @@ void copyWord(char **token, char **bptr) {
   *bptr = cptr + 1;
 }
 
+void copyWordStatic(char token[], char **bptr) {
+  // create current ptr
+  char *cptr = *bptr;
+
+  // count the characters we want to copy
+  int num_chars = 0;
+  while (*cptr != ' ' && *cptr != '\n') {
+    num_chars++;
+    cptr++;
+  }
+
+  // copy the chars to token
+  cptr = *bptr;
+  for (int i = 0; i < num_chars; i++) {
+    token[i] = *cptr;
+    cptr++;
+  }
+  token[num_chars] = '\0';
+  *bptr = cptr + 1;
+}
+
 int read_parameter(const char *filename, enum fsm_parameter param_type) {
 
   char param_char;
@@ -101,7 +122,7 @@ bool read_fsm(const char *filename, struct transition *transitions) {
     char *curtoken;
 
     // input
-    copyWord(&transptr->input, &lineptr);
+    copyWordStatic(transptr->input, &lineptr);
 
     // current state
     copyWord(&curtoken, &lineptr);
@@ -112,7 +133,7 @@ bool read_fsm(const char *filename, struct transition *transitions) {
     transptr->next_state = statetodecimal(curtoken);
 
     // output
-    copyWord(&transptr->output, &lineptr);
+    copyWordStatic(transptr->output, &lineptr);
 
     transptr++;
   }

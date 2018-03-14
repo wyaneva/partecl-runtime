@@ -83,10 +83,10 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
   return param_value;
 }
 
-long long int statetodecimal(char *state) {
+long int statetodecimal(char *state) {
 
   char *stateptr = state;
-  long long int decimal = 0;
+  long int decimal = 0;
   while (*stateptr != '\0') {
     decimal = decimal * 2 + *stateptr - '0';
     stateptr++;

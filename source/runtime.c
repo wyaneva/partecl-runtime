@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#include "../kernel-gen/cpu-gen.h"
-#include "../kernel-gen/fsm.h"
-#include "../utils/options.h"
-#include "../utils/read-test-cases.h"
-#include "../utils/timing.h"
-#include "../utils/utils.h"
-#include "cl-utils.h"
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "fsm.c"
+#include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/fsm.h"
+#include "../kernel-gen/fsm.cl"
+#include "../utils/options.h"
+#include "../utils/read-test-cases.h"
+#include "../utils/timing.h"
+#include "../utils/utils.h"
+#include "cl-utils.h"
 
 #define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"
@@ -42,83 +42,70 @@ void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
 
-int main_cpu(int argc, char **argv, cl_context ctx, cl_kernel knl,
-             cl_command_queue queue_inputs) {
+void setup_common_buffers(cl_context ctx, cl_kernel knl,
+                          cl_command_queue queue_inputs,
+                          struct transition *transitions, int num_transitions,
+                          int input_length, int output_length) {
+  // setup buffers
+  printf("%d\n", num_transitions);
+  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  cl_int err;
+  cl_mem buf_transitions =
+      clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_transitions: %d\n", err);
 
-  //if (argc < 3) {
-  //  printf("Please provide an input filename and an input sequence.\n");
-  //  return 0;
-  //}
+  // transfer data to GPU
+  cl_event event_common_buffers;
+  err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_FALSE, 0,
+                             size_transitions, transitions, 0, NULL,
+                             &event_common_buffers);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_transitions: %d\n", err);
+
+  // set kernels
+  err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_transitions);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 2: %d\n", err);
+
+  err = clSetKernelArg(knl, 3, sizeof(int), &num_transitions);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 3: %d\n", err);
+
+  err = clSetKernelArg(knl, 4, sizeof(int), &input_length);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 4: %d\n", err);
+
+  err = clSetKernelArg(knl, 5, sizeof(int), &output_length);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 5: %d\n", err);
+}
+
+void main_cpu(int argc, char **argv, cl_context ctx, cl_kernel knl,
+              cl_command_queue queue_inputs) {
+  /*
+  if (argc < 3) {
+    printf("Please provide an input filename and an input sequence.\n");
+    return 0;
+  }
+  */
 
   // inputs
   char *filename = argv[0];
-  //char *input_ptr = argv[2];
+  // char *input_ptr = argv[2];
 
   // read the fsm
-  // number of states
-  int num_transitions = read_parameter(filename, NUM_TRANSITIONS);
-  if (num_transitions == -1) {
-    printf("File %s does not specify a number of transitions. Exiting. \n",
-           filename);
-    return 0;
-  }
-
-  // input length
-  int input_length = read_parameter(filename, INPUT_LENGTH);
-  if (input_length == -1) {
-    printf("File %s does not specify input length. Exiting. \n", filename);
-    return 0;
-  }
-
-  // output length
-  int output_length = read_parameter(filename, OUTPUT_LENGTH);
-  if (output_length == -1) {
-    printf("File %s does not specify output length. Exiting. \n", filename);
-    return 0;
-  }
-
   // transitions
-  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  int num_transitions;
+  int input_length;
+  int output_length;
   struct transition *transitions =
-      (struct transition *)malloc(size_transitions);
-  read_fsm(filename, transitions);
+      read_fsm(filename, &num_transitions, &input_length, &output_length);
 
- // original code ends here
-
- // setup buffers
- cl_int err;
- cl_mem buf_transitions =
-     clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);
- if (err != CL_SUCCESS)
-   printf("error: clCreateBuffer buf_transitions: %d\n", err);
-
- // transfer data to GPU
- cl_event event_common_buffers;
- err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_FALSE, 0,
-                            size_transitions, transitions, 0, NULL,
-                            &event_common_buffers);
- if (err != CL_SUCCESS)
-   printf("error: clEnqueueWriteBuffer buf_transitions: %d\n", err);
-
-// set kernels
- err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_transitions);
- if (err != CL_SUCCESS)
-   printf("error: clSetKernelArg 2: %d\n", err);
-
- printf("%d\n", num_transitions);
- err = clSetKernelArg(knl, 3, sizeof(int), &num_transitions);
- if (err != CL_SUCCESS)
-   printf("error: clSetKernelArg 3: %d\n", err);
-
- err = clSetKernelArg(knl, 4, sizeof(int), &input_length);
- if (err != CL_SUCCESS)
-   printf("error: clSetKernelArg 4: %d\n", err);
-
- err = clSetKernelArg(knl, 5, sizeof(int), &output_length);
- if (err != CL_SUCCESS)
-   printf("error: clSetKernelArg 5: %d\n", err);
-
- return 0;
+  // original code ends here
+  //
+  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
+                       input_length, output_length);
 }
 
 int main(int argc, char **argv) {
@@ -214,7 +201,7 @@ int main(int argc, char **argv) {
     printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
-  char *filename = "train4.kiss2";
+  char *filename = "s298.kiss2";
   main_cpu(2, &filename, ctx, knl, queue_inputs);
 
   for (int i = 0; i < num_runs; i++) {

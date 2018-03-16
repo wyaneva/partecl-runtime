@@ -127,10 +127,11 @@ int main(int argc, char **argv) {
     struct timespec time1, time2;
     get_timestamp(&time1);
 
-#pragma omp parallel for default(none) shared(num_test_cases, inputs, results) \
+#pragma omp parallel for default(none) shared(num_test_cases, inputs, results, transitions, num_transitions, input_length, output_length) \
     schedule(static)
     for (int j = 0; j < num_test_cases; j++) {
-      run_on_cpu(inputs[j], &results[j]);
+      run_on_cpu(inputs[j], &results[j], transitions, num_transitions,
+                 input_length, output_length);
     }
 
     get_timestamp(&time2);

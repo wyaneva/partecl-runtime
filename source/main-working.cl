@@ -74,21 +74,31 @@ __kernel void execute_fsm(__global struct partecl_input *inputs,
   char* input_ptr = input_gen.input_ptr;
   __global char* output_ptr = result_gen->output;
 
-  long int current_state = transitions[0].current_state;
+  // output
+  int length = strlen(input_ptr) / input_length * output_length;
+  //char output[50];
+  //char *output_ptr = output;
 
+  long int current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
     current_state = lookup_symbol(num_transitions, transitions, current_state,
                                   input_ptr, input_length, output_ptr);
 
     if (current_state == -1) {
-      // return -1;
+      // return;
     }
 
     input_ptr += input_length;
     output_ptr += output_length;
   }
 
-  //return current_state;
-  result_gen->length=strlen(input_gen.input_ptr) / input_length * output_length;
+  // print the output
+  for (int i = 0; i < length; i++) {
+    //printf("%c", output[i]);
+  }
+  //printf("\n");
+  //printf("Final state: %ld\n", current_state);
+
+  result_gen->length=length;
   result_gen->final_state = current_state;
 }

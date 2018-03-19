@@ -14,67 +14,22 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "../kernel-gen/cpu-gen.h"
 #include "../kernel-gen/structs.h"
 #include "../kernel-gen/fsm.h"
+#include "../kernel-gen/fsm.cl"
 #include "../utils/options.h"
 #include "../utils/read-test-cases.h"
 #include "../utils/timing.h"
 #include "../utils/utils.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "../source/fsm.c"
 
 //int run_main(struct partecl_input input, struct partecl_result *result);
 int run_main(struct partecl_input input, struct partecl_result *result,
              struct transition *transitions, int num_transitions,
              int input_length, int output_length);
-
-int main_cpu(int argc, char **argv, struct transition *transitions,
-             int *num_transitions, int *input_length, int *output_length) {
-  //if (argc < 3) {
-  //  printf("Please provide an input filename and an input sequence.\n");
-  //  return 0;
-  //}
-
-  // inputs
-  char *filename = argv[0];
-  //char *input_ptr = argv[2];
-
-  // read the fsm
-  // number of states
-  *num_transitions = read_parameter(filename, NUM_TRANSITIONS);
-  if (*num_transitions == -1) {
-    printf("File %s does not specify a number of transitions. Exiting. \n",
-           filename);
-    return 0;
-  }
-
-  // input length
-  *input_length = read_parameter(filename, INPUT_LENGTH);
-  if (*input_length == -1) {
-    printf("File %s does not specify input length. Exiting. \n", filename);
-    return 0;
-  }
-
-  // output length
-  *output_length = read_parameter(filename, OUTPUT_LENGTH);
-  if (*output_length == -1) {
-    printf("File %s does not specify output length. Exiting. \n", filename);
-    return 0;
-  }
-
-  // transitions
-  size_t size_transitions = sizeof(struct transition) * (*num_transitions);
-  transitions =
-      (struct transition *)malloc(size_transitions);
-  read_fsm(filename, transitions);
-
- // original code ends here
-
-  return 1;
-}
 
 void run_on_cpu(struct partecl_input input, struct partecl_result *result,
                 struct transition *transitions, int num_transitions,
@@ -115,13 +70,13 @@ int main(int argc, char **argv) {
   if (read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
-  // read the fsm
+  // execute the main code - TODO: plug it automatically
   char *filename = "train4.kiss2";
   int num_transitions;
   int input_length;
   int output_length;
-  struct transition *transitions;
-  main_cpu(2, &filename, transitions, &num_transitions, &input_length, &output_length);
+  struct transition *transitions =
+      read_fsm(filename, &num_transitions, &input_length, &output_length);
 
   for (int i = 0; i < num_runs; i++) {
     struct timespec time1, time2;

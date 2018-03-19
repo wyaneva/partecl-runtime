@@ -81,33 +81,6 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
     printf("error: clSetKernelArg 5: %d\n", err);
 }
 
-void main_cpu(int argc, char **argv, cl_context ctx, cl_kernel knl,
-              cl_command_queue queue_inputs) {
-  /*
-  if (argc < 3) {
-    printf("Please provide an input filename and an input sequence.\n");
-    return 0;
-  }
-  */
-
-  // inputs
-  char *filename = argv[0];
-  // char *input_ptr = argv[2];
-
-  // read the fsm
-  // transitions
-  int num_transitions;
-  int input_length;
-  int output_length;
-  struct transition *transitions =
-      read_fsm(filename, &num_transitions, &input_length, &output_length);
-
-  // original code ends here
-  //
-  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
-                       input_length, output_length);
-}
-
 int main(int argc, char **argv) {
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
@@ -201,8 +174,14 @@ int main(int argc, char **argv) {
     printf("trans-inputs trans-results exec-kernel time-total \n");
   }
 
+  // execute main code (TODO: plug main code)
   char *filename = "s298.kiss2";
-  main_cpu(2, &filename, ctx, knl, queue_inputs);
+  int num_transitions;
+  int input_length;
+  int output_length;
+  struct transition *transitions = read_fsm(filename, &num_transitions, &input_length, &output_length);  
+  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
+                       input_length, output_length);
 
   for (int i = 0; i < num_runs; i++) {
     // timing variables

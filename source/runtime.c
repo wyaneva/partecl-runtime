@@ -89,9 +89,10 @@ int main(int argc, char **argv) {
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
   int num_test_cases = 1;
+  char *filename;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
-                   &num_runs, &ldim0, &do_choose_device, &num_chunks) == FAIL)
+                   &num_runs, &ldim0, &do_choose_device, &num_chunks, &filename) == FAIL)
     return 0;
 
   // check that the specified number of chunks divides the number of tests
@@ -175,10 +176,10 @@ int main(int argc, char **argv) {
   }
 
   // execute main code (TODO: plug main code)
-  char *filename = "s298.kiss2";
   int num_transitions;
   int input_length;
   int output_length;
+  printf("Reading fsm: %s\n", filename);
   struct transition *transitions = read_fsm(filename, &num_transitions, &input_length, &output_length);  
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
                        input_length, output_length);

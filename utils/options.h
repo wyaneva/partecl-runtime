@@ -27,6 +27,6 @@
 
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *do_overlap);
+                 int *do_choose_device, int *do_overlap, char **filename);
 
 #endif

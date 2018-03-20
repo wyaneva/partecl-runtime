@@ -44,9 +44,10 @@ int main(int argc, char **argv) {
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int num_test_cases = 1;
+  char *filename;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
-                   &num_runs, NULL, NULL, NULL) == FAIL)
+                   &num_runs, NULL, NULL, NULL, &filename) == FAIL)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);
@@ -71,10 +72,10 @@ int main(int argc, char **argv) {
     return 0;
 
   // execute the main code - TODO: plug it automatically
-  char *filename = "train4.kiss2";
   int num_transitions;
   int input_length;
   int output_length;
+  printf("Reading fsm: %s\n", filename);
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);
 

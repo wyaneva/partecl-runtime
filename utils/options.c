@@ -40,7 +40,7 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 // int* num_chunks - from gpu code
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *num_chunks) {
+                 int *do_choose_device, int *num_chunks, char **filename) {
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
@@ -90,6 +90,12 @@ int read_options(int argc, char **argv, int *num_test_cases,
       {
         if (!parseYNOption(argv, i, label, do_choose_device))
           return FAIL;
+      }
+
+      // FILENAME
+      else if (strcmp(label, "-filename") == 0 && filename) // filename
+      {
+        *filename = argv[i + 1];
       }
 
       // OVERLAP

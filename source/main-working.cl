@@ -50,8 +50,8 @@ long int lookup_symbol(int num_transitions,
     }
   }
 
-  /*printf("\nCouldn't find transition for state %lld, input %s.\n",
-         current_state, input);*/
+  printf("\nCouldn't find transition for state %lld, input %s.\n",
+         current_state, input);
   return -1;
 }
 

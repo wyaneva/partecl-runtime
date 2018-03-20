@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
   int num_test_cases = 1;
-  char *filename;
+  char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks, &filename) == FAIL)
@@ -179,6 +179,11 @@ int main(int argc, char **argv) {
   int num_transitions;
   int input_length;
   int output_length;
+  if(filename == NULL)
+  {
+    printf("Please provide an FSM filename.\n");
+    return 0;
+  }
   printf("Reading fsm: %s\n", filename);
   struct transition *transitions = read_fsm(filename, &num_transitions, &input_length, &output_length);  
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,

@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int num_test_cases = 1;
-  char *filename;
+  char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
                    &num_runs, NULL, NULL, NULL, &filename) == FAIL)
@@ -75,6 +75,11 @@ int main(int argc, char **argv) {
   int num_transitions;
   int input_length;
   int output_length;
+  if(filename == NULL)
+  {
+    printf("Please provide an FSM filename.\n");
+    return 0;
+  }
   printf("Reading fsm: %s\n", filename);
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);

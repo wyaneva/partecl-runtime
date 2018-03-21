@@ -57,8 +57,6 @@ int main(int argc, char **argv) {
     if (tid == 0)
       printf("Number of threads = %d\n", omp_get_num_threads());
   }
-  if (do_time)
-    printf("Time in ms\n");
 
   struct partecl_input *inputs;
   size_t inputs_size = sizeof(struct partecl_input) * num_test_cases;
@@ -75,14 +73,16 @@ int main(int argc, char **argv) {
   int num_transitions;
   int input_length;
   int output_length;
-  if(filename == NULL)
-  {
+  if (filename == NULL) {
     printf("Please provide an FSM filename.\n");
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);
+
+  if (do_time)
+    printf("Time in ms\n");
 
   for (int i = 0; i < num_runs; i++) {
     struct timespec time1, time2;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     double time_cpu = time_in_secs * 1000;
 
     if (do_time)
-      printf("%f \n", time_cpu);
+      printf("%.6f \n", time_cpu);
   }
 
   if (do_print_results)

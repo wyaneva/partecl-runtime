@@ -47,7 +47,6 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           struct transition *transitions, int num_transitions,
                           int input_length, int output_length) {
   // setup buffers
-  printf("%d\n", num_transitions);
   size_t size_transitions = sizeof(struct transition) * num_transitions;
   cl_int err;
   cl_mem buf_transitions =
@@ -169,25 +168,25 @@ int main(int argc, char **argv) {
   calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
-  if (do_time) {
-    printf("Number of test cases: %d\n", num_test_cases);
-    printf("Time in ms\n");
-    printf("trans-inputs trans-results exec-kernel time-total \n");
-  }
-
   // execute main code (TODO: plug main code)
   int num_transitions;
   int input_length;
   int output_length;
-  if(filename == NULL)
-  {
+  if (filename == NULL) {
     printf("Please provide an FSM filename.\n");
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
-  struct transition *transitions = read_fsm(filename, &num_transitions, &input_length, &output_length);  
+  struct transition *transitions =
+      read_fsm(filename, &num_transitions, &input_length, &output_length);
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
                        input_length, output_length);
+
+  if (do_time) {
+    printf("Number of test cases: %d\n", num_test_cases);
+    printf("Time in ms\n");
+    printf("trans-inputs\ttrans-results\texec-kernel\ttime-total\n");
+  }
 
   for (int i = 0; i < num_runs; i++) {
     // timing variables
@@ -301,7 +300,7 @@ int main(int argc, char **argv) {
 
     end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
     if (do_time)
-      printf("%f %f %f %f \n", trans_inputs, trans_results, time_gpu,
+      printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
              end_to_end);
 
     // check results

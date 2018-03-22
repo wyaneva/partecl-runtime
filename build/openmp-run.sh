@@ -1,5 +1,12 @@
 #!/bin/sh
 
-export OMP_NUM_THREADS=$5
-./../build/cpu-test $1 -time $2 -results $3 -runs $4 
+NUM_TESTS=$1
+DO_TIME=$2
+DO_RESULTS=$3
+NUM_RUNS=$4
+NUM_THREADS=$5
+FSM_FILENAME=$6
+
+export OMP_NUM_THREADS=$NUM_THREADS
+./../build/cpu-test $NUM_TESTS -time $DO_TIME -results $DO_RESULTS -runs $NUM_RUNS -filename $FSM_FILENAME
 

@@ -31,12 +31,12 @@ void choose_device(cl_platform_id *rplatform, cl_device_id *rdevice,
   cl_uint platform_count;
   err = clGetPlatformIDs(0, NULL, &platform_count);
   if (err != CL_SUCCESS)
-    printf("error: clGetPlatformIDs: %d\n", err);
+    printf("error: clGetPlatformIDs (platform_count): %d\n", err);
   cl_platform_id *platforms =
       (cl_platform_id *)malloc(platform_count * sizeof(cl_platform_id));
   err = clGetPlatformIDs(platform_count, platforms, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetPlatformIDs: %d\n", err);
+    printf("error: clGetPlatformIDs (platforms): %d\n", err);
 
   int platformidx;
   if (!do_choose) {
@@ -50,7 +50,7 @@ void choose_device(cl_platform_id *rplatform, cl_device_id *rdevice,
       err =
           clGetPlatformInfo(platform, CL_PLATFORM_NAME, sizeof(buf), buf, NULL);
       if (err != CL_SUCCESS)
-        printf("error: clGetPlatformInfo: %d\n", err);
+        printf("error: clGetPlatformInfo (CL_PLATFORM_NAME): %d\n", err);
       else
         printf("[%d]: %s\n", i, buf);
     }
@@ -67,13 +67,13 @@ void choose_device(cl_platform_id *rplatform, cl_device_id *rdevice,
   cl_uint dev_count;
   err = clGetDeviceIDs(*rplatform, CL_DEVICE_TYPE_ALL, 0, NULL, &dev_count);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceIDs: %d\n", err);
+    printf("error: clGetDeviceIDs (dev_count): %d\n", err);
   cl_device_id *devices =
       (cl_device_id *)malloc(dev_count * sizeof(cl_device_id));
   err =
       clGetDeviceIDs(*rplatform, CL_DEVICE_TYPE_ALL, dev_count, devices, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceIDs: %d\n", err);
+    printf("error: clGetDeviceIDs (devices): %d\n", err);
 
   int deviceidx;
   if (!do_choose) {
@@ -87,7 +87,7 @@ void choose_device(cl_platform_id *rplatform, cl_device_id *rdevice,
       char buf[100];
       err = clGetDeviceInfo(dev, CL_DEVICE_NAME, sizeof(buf), buf, NULL);
       if (err != CL_SUCCESS)
-        printf("error: clGetDeviceInfo: %d\n", err);
+        printf("error: clGetDeviceInfo (CL_DEVICE_NAME): %d\n", err);
       else
         printf("[%d]: %s \n", i, buf);
     }
@@ -122,20 +122,20 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source,
     err = clGetProgramInfo(program, CL_PROGRAM_DEVICES, sizeof(device), &device,
                            NULL);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramInfo: %d\n", err);
+      printf("error: clGetProgramInfo (CL_PROGRAM_DEVICES): %d\n", err);
 
     // get the binaries (for debugging)
     size_t num_binaries;
     err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, 0, NULL,
                            &num_binaries);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramInfo: %d\n", err);
+      printf("error: clGetProgramInfo (num_binaries): %d\n", err);
 
     size_t binary_sizes[num_binaries];
     err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES,
                            sizeof(binary_sizes), binary_sizes, NULL);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramInfo: %d\n", err);
+      printf("error: clGetProgramInfo (binary_sizes): %d\n", err);
 
     char *binaries[num_binaries];
     for (size_t i = 0; i < num_binaries; i++)
@@ -143,7 +143,7 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source,
     err = clGetProgramInfo(program, CL_PROGRAM_BINARIES, sizeof(binaries),
                            binaries, NULL);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramInfo: %d\n", err);
+      printf("error: clGetProgramInfo (binaries): %d\n", err);
 
     for (size_t i = 0; i < num_binaries; i++)
       printf("%s\n", binaries[i]);
@@ -153,14 +153,14 @@ cl_kernel kernel_from_string(cl_context context, char const *kernel_source,
     err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL,
                                 &log_size);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramBuildInfo 1: %d\n", err);
+      printf("error: clGetProgramBuildInfo (log_size): %d\n", err);
 
     char *log = (char *)malloc(log_size);
 
     err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log_size,
                                 log, NULL);
     if (err != CL_SUCCESS)
-      printf("error: clGetProgramBuildInfo 2: %d\n", err);
+      printf("error: clGetProgramBuildInfo (log): %d\n", err);
 
     fprintf(stderr, "*** build of '%s' said:\n%s\n*** (end of message)\n",
             kernel_name, log);
@@ -190,7 +190,7 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   char buf[100];
   err = clGetDeviceInfo(*dev, CL_DEVICE_NAME, sizeof(buf), buf, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo: %d\n", err);
+    printf("error: clGetDeviceInfo (CL_DEVICE_NAME): %d\n", err);
   else
     printf("Device: %s \n", buf);
 
@@ -199,7 +199,7 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   err = clGetDeviceInfo(*dev, CL_DEVICE_MAX_COMPUTE_UNITS,
                         sizeof(num_compute_units), &num_compute_units, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo: %d\n", err);
+    printf("error: clGetDeviceInfo (CL_DEVICE_MAX_COMPUTE_UNITS): %d\n", err);
   else
     printf("Compute units: %d \n", num_compute_units);
 
@@ -208,7 +208,7 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   err = clGetDeviceInfo(*dev, CL_DEVICE_MAX_WORK_GROUP_SIZE,
                         sizeof(workgroup_size), &workgroup_size, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo: %d\n", err);
+    printf("error: clGetDeviceInfo (CL_DEVICE_MAX_WORK_GROUP_SIZE): %d\n", err);
   else
     printf("Work-group size: %ld \n", workgroup_size);
 
@@ -217,15 +217,25 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   err = clGetDeviceInfo(*dev, CL_DEVICE_LOCAL_MEM_SIZE,
                         sizeof(local_memory_size), &local_memory_size, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo: %d\n", err);
+    printf("error: clGetDeviceInfo (CL_DEVICE_LOCAL_MEM_SIZE): %d\n", err);
   else
     printf("Local memory size (in bytes): %ld \n", local_memory_size);
+
+  // global mem size
+  size_t global_memory_size;
+  err = clGetDeviceInfo(*dev, CL_DEVICE_GLOBAL_MEM_SIZE,
+                        sizeof(global_memory_size), &global_memory_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_GLOBAL_MEM_SIZE): %d\n", err);
+  else
+    printf("Global memory size (in bytes): %ld \n", global_memory_size);
+
 
   char version[100];
   err =
       clGetDeviceInfo(*dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
   if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo: %d\n", err);
+    printf("error: clGetDeviceInfo (CL_DEVICE_VERSION): %d\n", err);
   else
     printf("Version: %s \n", version);
 

@@ -48,6 +48,7 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           int input_length, int output_length) {
   // setup buffers
   size_t size_transitions = sizeof(struct transition) * num_transitions;
+  printf("Size of FSM with %d transitions is %ld.\n", num_transitions, size_transitions);
   cl_int err;
   cl_mem buf_transitions =
       clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);

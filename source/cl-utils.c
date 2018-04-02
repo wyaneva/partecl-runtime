@@ -230,6 +230,14 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   else
     printf("Global memory size (in bytes): %ld \n", global_memory_size);
 
+  // global mem cache size
+  size_t global_memory_cache_size;
+  err = clGetDeviceInfo(*dev, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE,
+                        sizeof(global_memory_cache_size), &global_memory_cache_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_GLOBAL_MEM_CACHE_SIZE): %d\n", err);
+  else
+    printf("Global memory cache size (in bytes): %ld \n", global_memory_cache_size);
 
   char version[100];
   err =

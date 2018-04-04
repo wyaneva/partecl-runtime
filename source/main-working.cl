@@ -38,7 +38,7 @@ bool comparebinary(char binary1[], char binary2[], int length) {
 short lookup_symbol(int num_transitions,
                             __global struct transition transitions[],
                             short current_state, char input[],
-                            int length, __global char *output_ptr) {
+                            int length, private char *output_ptr) {
 
   for (int i = 0; i < num_transitions; i++) {
 
@@ -59,25 +59,25 @@ short lookup_symbol(int num_transitions,
  * Executes the FSM.
  * Returns the final state.
  */
-__kernel void execute_fsm(__global struct partecl_input *inputs,
-                          __global struct partecl_result *results,
-                          __global struct transition *transitions,
-                          int num_transitions,
-                          int input_length,
-                          int output_length) {
+kernel void execute_fsm(global struct partecl_input *inputs,
+                        global struct partecl_result *results,
+                        global struct transition *transitions,
+                        int num_transitions,
+                        int input_length,
+                        int output_length) {
 
   int idx = get_global_id(0);
-  struct partecl_input input_gen = inputs[idx];
-  __global struct partecl_result *result_gen = &results[idx];
+  private struct partecl_input input_gen = inputs[idx];
+  global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = input_gen.test_case_num;
 
   char* input_ptr = input_gen.input_ptr;
-  __global char* output_ptr = result_gen->output;
+  //__global char* output_ptr = result_gen->output;
 
   // output
   int length = strlen(input_ptr) / input_length * output_length;
-  //char output[50];
-  //char *output_ptr = output;
+  private char output[300];
+  private char *output_ptr = output;
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
@@ -99,6 +99,9 @@ __kernel void execute_fsm(__global struct partecl_input *inputs,
   //printf("\n");
   //printf("Final state: %ld\n", current_state);
 
-  result_gen->length=length;
+  for (int i = 0; i < length; i++) {
+    result_gen->output[i] = output[i];
+  }
+  result_gen->length = length;
   result_gen->final_state = current_state;
 }

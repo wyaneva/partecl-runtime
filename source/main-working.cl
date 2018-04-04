@@ -35,10 +35,9 @@ bool comparebinary(char binary1[], char binary2[], int length) {
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-short lookup_symbol(int num_transitions,
-                            __global struct transition transitions[],
-                            short current_state, char input[],
-                            int length, private char *output_ptr) {
+short lookup_symbol(int num_transitions, struct transition transitions[],
+                    short current_state, char input[], int length,
+                    private char *output_ptr) {
 
   for (int i = 0; i < num_transitions; i++) {
 
@@ -74,6 +73,12 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   char* input_ptr = input_gen.input_ptr;
   //__global char* output_ptr = result_gen->output;
 
+private
+  struct transition transitions_local[1096];
+  for (int i = 0; i < num_transitions; i++) {
+    transitions_local[i] = transitions[i];
+  }
+
   // output
   int length = strlen(input_ptr) / input_length * output_length;
   private char output[300];
@@ -81,7 +86,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
-    current_state = lookup_symbol(num_transitions, transitions, current_state,
+    current_state = lookup_symbol(num_transitions, transitions_local, current_state,
                                   input_ptr, input_length, output_ptr);
 
     if (current_state == -1) {

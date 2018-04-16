@@ -7,6 +7,9 @@
 //#include <stdlib.h>
 //#include <string.h>
 
+#define NUM_TRANSITIONS 1096
+#define OUTPUT_LENGTH 300
+
 /**
  * Read the value of a parameter in the KISS2 file.
  * This refers to the .i, .o, .p and .s parameters
@@ -73,14 +76,14 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   char* input_ptr = input_gen.input_ptr;
   //__global char* output_ptr = result_gen->output;
 
-local struct transition transitions_local[1096];
+  local struct transition transitions_local[NUM_TRANSITIONS];
   for (int i = 0; i < num_transitions; i++) {
     transitions_local[i] = transitions[i];
   }
 
   // output
   int length = (strlen(input_ptr) / input_length) * output_length;
-  private char output[300];
+  private char output[OUTPUT_LENGTH];
   private char *output_ptr = output;
 
   short current_state = transitions[0].current_state;

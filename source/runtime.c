@@ -183,6 +183,38 @@ int main(int argc, char **argv) {
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
                        input_length, output_length);
 
+  // coalesced memory accesses
+  char *coal_inputs = (char *)malloc(sizeof(char));
+  int input_lengths[num_test_cases];
+  int total_length = 0;
+  char *ciptr = coal_inputs;
+  for (int i = 0; i < num_test_cases; i++) {
+    struct partecl_input cur_input = inputs[i];
+    input_lengths[i] = 0;
+    char *iptr = cur_input.input_ptr;
+
+    // find out the length of the current input
+    while (*iptr != '\0') {
+      input_lengths[i]++;
+      iptr++;
+    }
+
+    total_length += input_lengths[i];
+    coal_inputs = (char *)realloc(coal_inputs, sizeof(char) * total_length);
+
+    // copy the current input
+    iptr = cur_input.input_ptr;
+    while (*iptr != '\0') {
+      *ciptr = *iptr;
+      iptr++;
+      ciptr++;
+    }
+  }
+
+  for (int i = 0; i < num_test_cases; i++) {
+    printf("%d %d\n", input_lengths[i], total_length);
+  }
+
   if (do_time) {
     printf("Number of test cases: %d\n", num_test_cases);
     printf("Time in ms\n");

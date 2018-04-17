@@ -184,25 +184,26 @@ int main(int argc, char **argv) {
                        input_length, output_length);
 
   // coalesced memory accesses
-  char *coal_inputs = (char *)malloc(sizeof(char));
   int input_lengths[num_test_cases];
   int total_length = 0;
-  char *ciptr = coal_inputs;
+  // find out the lengths of the inputs
   for (int i = 0; i < num_test_cases; i++) {
     struct partecl_input cur_input = inputs[i];
     input_lengths[i] = 0;
     char *iptr = cur_input.input_ptr;
-
-    // find out the length of the current input
     while (*iptr != '\0') {
       input_lengths[i]++;
       iptr++;
     }
-
     total_length += input_lengths[i];
-    coal_inputs = (char *)realloc(coal_inputs, sizeof(char) * total_length);
+  }
 
-    // copy the current input
+  // copy the inputs
+  char *coal_inputs = (char *)malloc(sizeof(char)*total_length);
+  char *ciptr = coal_inputs;
+  for (int i = 0; i < num_test_cases; i++) {
+    struct partecl_input cur_input = inputs[i];
+    char *iptr = cur_input.input_ptr;
     iptr = cur_input.input_ptr;
     while (*iptr != '\0') {
       *ciptr = *iptr;
@@ -212,7 +213,7 @@ int main(int argc, char **argv) {
   }
 
   for (int i = 0; i < num_test_cases; i++) {
-    printf("%d %d\n", input_lengths[i], total_length);
+    printf("%d %d %s\n", input_lengths[i], total_length, coal_inputs);
   }
 
   if (do_time) {

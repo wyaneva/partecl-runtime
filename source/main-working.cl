@@ -69,11 +69,12 @@ kernel void execute_fsm(global struct partecl_input *inputs,
                         int output_length) {
 
   int idx = get_global_id(0);
-  private struct partecl_input input_gen = inputs[idx];
+  local struct partecl_input input_gen; 
+  input_gen = inputs[idx];
   global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = input_gen.test_case_num;
 
-  char* input_ptr = input_gen.input_ptr;
+  local char* input_ptr = input_gen.input_ptr;
   //__global char* output_ptr = result_gen->output;
 
   local struct transition transitions_local[NUM_TRANSITIONS];

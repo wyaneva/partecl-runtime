@@ -15,7 +15,7 @@
  * This refers to the .i, .o, .p and .s parameters
  */
 
-bool comparebinary(char binary1[], char binary2[], int length) {
+bool comparebinary(local char binary1[], char binary2[], int length) {
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
 
@@ -39,7 +39,7 @@ bool comparebinary(char binary1[], char binary2[], int length) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(int num_transitions, local struct transition transitions[],
-                    short current_state, char input[], int length,
+                    short current_state, local char input[], int length,
                     private char *output_ptr) {
 
   for (int i = 0; i < num_transitions; i++) {

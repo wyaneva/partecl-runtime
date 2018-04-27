@@ -1,7 +1,7 @@
-#include "structs.h"
 #include "cl-stdio.h"
 #include "cl-string.h"
 #include "fsm.h"
+#include "structs.h"
 //#include <stdbool.h>
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -9,6 +9,7 @@
 
 #define NUM_TRANSITIONS 1096
 #define OUTPUT_LENGTH 300
+#define INPUT_LENGTH 300
 
 /**
  * Read the value of a parameter in the KISS2 file.
@@ -64,19 +65,27 @@ short lookup_symbol(int num_transitions, local struct transition transitions[],
 kernel void execute_fsm(global struct partecl_input *inputs,
                         global struct partecl_result *results,
                         global struct transition *transitions,
-                        int num_transitions,
-                        int input_length,
+                        int num_transitions, int input_length,
                         int output_length) {
 
   int idx = get_global_id(0);
-  local struct partecl_input input_gen; 
-  input_gen = inputs[idx];
+  struct partecl_input input_gen = inputs[idx];
   global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = input_gen.test_case_num;
 
-  local char* input_ptr = input_gen.input_ptr;
-  //__global char* output_ptr = result_gen->output;
+  //copy inputs into local memory
+  local char input_local[INPUT_LENGTH];
+  local char *input_ptr = &input_local[0];
+  char *input_global_ptr = &input_gen.input_ptr[0];
+  while (*input_global_ptr != '\0') {
+    *input_ptr = *input_global_ptr;
+    input_ptr++;
+    input_global_ptr++;
+  }
+  *input_ptr = '\0';
+  input_ptr = &input_local[0];
 
+  //copy FSM into local memory
   local struct transition transitions_local[NUM_TRANSITIONS];
   for (int i = 0; i < num_transitions; i++) {
     transitions_local[i] = transitions[i];
@@ -84,13 +93,18 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
   // output
   int length = (strlen(input_ptr) / input_length) * output_length;
-  private char output[OUTPUT_LENGTH];
-  private char *output_ptr = output;
+private
+  char output[OUTPUT_LENGTH];
+private
+  char *output_ptr = output;
+
+  printf("%d %d %d\n", input_gen.test_case_num, length, strlen(input_ptr));
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
-    current_state = lookup_symbol(num_transitions, transitions_local, current_state,
-                                  input_ptr, input_length, output_ptr);
+    current_state =
+        lookup_symbol(num_transitions, transitions_local, current_state,
+                      input_ptr, input_length, output_ptr);
 
     if (current_state == -1) {
       // return;
@@ -101,11 +115,11 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   }
 
   // print the output
-  for (int i = 0; i < length; i++) {
-    //printf("%c", output[i]);
-  }
-  //printf("\n");
-  //printf("Final state: %ld\n", current_state);
+  //for (int i = 0; i < length; i++) {
+    // printf("%c", output[i]);
+  //}
+  // printf("\n");
+  // printf("Final state: %ld\n", current_state);
 
   for (int i = 0; i < length; i++) {
     result_gen->output[i] = output[i];

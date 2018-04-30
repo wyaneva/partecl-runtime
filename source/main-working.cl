@@ -16,7 +16,7 @@
  * This refers to the .i, .o, .p and .s parameters
  */
 
-bool comparebinary(local char binary1[], char binary2[], int length) {
+bool comparebinary(char binary1[], char binary2[], int length) {
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
 
@@ -40,7 +40,7 @@ bool comparebinary(local char binary1[], char binary2[], int length) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(int num_transitions, local struct transition transitions[],
-                    short current_state, local char input[], int length,
+                    short current_state, char input[], int length,
                     private char *output_ptr) {
 
   for (int i = 0; i < num_transitions; i++) {
@@ -73,23 +73,14 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = input_gen.test_case_num;
 
-  //copy inputs into local memory
-  local char input_local[INPUT_LENGTH];
-  local char *input_ptr = &input_local[0];
-  char *input_global_ptr = &input_gen.input_ptr[0];
-  while (*input_global_ptr != '\0') {
-    *input_ptr = *input_global_ptr;
-    input_ptr++;
-    input_global_ptr++;
-  }
-  *input_ptr = '\0';
-  input_ptr = &input_local[0];
-
   //copy FSM into local memory
   local struct transition transitions_local[NUM_TRANSITIONS];
   for (int i = 0; i < num_transitions; i++) {
     transitions_local[i] = transitions[i];
   }
+
+  // input
+  char *input_ptr = input_gen.input_ptr;
 
   // output
   int length = (strlen(input_ptr) / input_length) * output_length;

@@ -10,13 +10,14 @@
 #define NUM_TRANSITIONS 1096
 #define OUTPUT_LENGTH 300
 #define INPUT_LENGTH 300
+#define NUM_TEST_CASES 5
 
 /**
  * Read the value of a parameter in the KISS2 file.
  * This refers to the .i, .o, .p and .s parameters
  */
 
-bool comparebinary(char binary1[], char binary2[], int length) {
+bool comparebinary(global char binary1[], char binary2[], int length) {
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
 
@@ -40,7 +41,7 @@ bool comparebinary(char binary1[], char binary2[], int length) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(int num_transitions, local struct transition transitions[],
-                    short current_state, char input[], int length,
+                    short current_state, global char input[], int length,
                     private char *output_ptr) {
 
   for (int i = 0; i < num_transitions; i++) {
@@ -62,16 +63,15 @@ short lookup_symbol(int num_transitions, local struct transition transitions[],
  * Executes the FSM.
  * Returns the final state.
  */
-kernel void execute_fsm(global struct partecl_input *inputs,
-                        global struct partecl_result *results,
+kernel void execute_fsm(global char *inputs, global struct partecl_result *results,
                         global struct transition *transitions,
                         int num_transitions, int input_length,
                         int output_length) {
 
   int idx = get_global_id(0);
-  struct partecl_input input_gen = inputs[idx];
+  //struct partecl_input input_gen = inputs[idx];
   global struct partecl_result *result_gen = &results[idx];
-  result_gen->test_case_num = input_gen.test_case_num;
+  result_gen->test_case_num = idx;
 
   //copy FSM into local memory
   local struct transition transitions_local[NUM_TRANSITIONS];
@@ -80,16 +80,14 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   }
 
   // input
-  char *input_ptr = input_gen.input_ptr;
+  global char *input_ptr = &inputs[idx*input_length];
 
   // output
-  int length = (strlen(input_ptr) / input_length) * output_length;
+  //int length = (strlen(input_ptr) / input_length) * output_length;
 private
   char output[OUTPUT_LENGTH];
 private
   char *output_ptr = output;
-
-  printf("%d %d %d\n", input_gen.test_case_num, length, strlen(input_ptr));
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
@@ -101,9 +99,10 @@ private
       // return;
     }
 
-    input_ptr += input_length;
+    input_ptr += input_length*NUM_TEST_CASES;
     output_ptr += output_length;
   }
+  int length = strlen(output);
 
   // print the output
   //for (int i = 0; i < length; i++) {

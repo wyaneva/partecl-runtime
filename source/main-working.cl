@@ -73,6 +73,11 @@ kernel void execute_fsm(global char *inputs, global struct partecl_result *resul
   global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = idx;
 
+  for (int i = 0; i < NUM_TEST_CASES * PADDED_INPUT_ARRAY_SIZE; i++) {
+    printf("%c", inputs[i]);
+  }
+  printf("\n");
+
   //copy FSM into local memory
   local struct transition transitions_local[NUM_TRANSITIONS];
   for (int i = 0; i < num_transitions; i++) {
@@ -91,6 +96,7 @@ private
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
+    printf("%d %c\n", idx, *input_ptr);
     current_state =
         lookup_symbol(num_transitions, transitions_local, current_state,
                       input_ptr, input_length, output_ptr);

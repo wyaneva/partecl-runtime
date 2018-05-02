@@ -124,28 +124,32 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
 
-  // allocate cpu and gpu memory for inputs
-  /*
-  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE |
-  CL_MEM_USE_HOST_PTR, size, inputs, &err); if(err != CL_SUCCESS) printf("error:
-  clCreateBuffer: %d\n", err);
-
-  //map the cpu memory to the gpu to generate the test cases
-  void* p_map_inputs = clEnqueueMapBuffer(queue, buf_inputs, CL_TRUE,
-  CL_MAP_WRITE, 0, 0, 0, NULL, NULL, &err); if(err != CL_SUCCESS) printf("error:
-  clEnqueueMapBuffer: %d\n", err);
-    */
-
   // read the test cases
   if (read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
-  // unmap inputs from gpu memory
-  /*
-  err = clEnqueueUnmapMemObject(queue, buf_inputs, p_map_inputs, 0, NULL, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clEnqueueUnmapMemObject: %d\n", err);
-    */
+  // transpose inputs for coalesced reading on gpu
+  // TODO: This might be a potentially automatically generated code, as it
+  // depends on the name of the variable in side the input structure
+  size_t size_inputs_coal =
+      sizeof(char) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
+  char *inputs_coal = (char *)malloc(size_inputs_coal);
+  for (int i = 0; i < PADDED_INPUT_ARRAY_SIZE; i++) {
+    for (int j = 0; j < num_test_cases; j++) {
+      struct partecl_input current_input = inputs[j];
+      size_t idx = i * num_test_cases + j;
+      inputs_coal[idx] = current_input.input_ptr[i];
+    }
+  }
+
+  for (int i = 0; i < num_test_cases; i++) {
+    printf("%d %s\n", inputs[i].test_case_num, inputs[i].input_ptr);
+  }
+
+  for (int i = 0; i < PADDED_INPUT_ARRAY_SIZE * num_test_cases; i++) {
+    printf("%c", inputs_coal[i]);
+  }
+  printf("\n");
 
   // create kernel
   char *knl_text = read_file(GPU_SOURCE);
@@ -169,7 +173,7 @@ int main(int argc, char **argv) {
   calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
   printf("LDIM = %zd\n", ldim[0]);
 
-  // execute main code (TODO: plug main code)
+  // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
   int input_length;
   int output_length;
@@ -200,7 +204,7 @@ int main(int argc, char **argv) {
 
     // allocate device memory
     cl_mem buf_inputs =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
@@ -220,8 +224,8 @@ int main(int argc, char **argv) {
       // transfer input to device
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE,
-          sizeof(partecl_input) * chunksize * j, size_inputs / num_chunks,
-          inputs + chunksize * j, 0, NULL, &event_inputs[j]);
+          sizeof(char) * chunksize * j, size_inputs_coal / num_chunks,
+          inputs_coal + chunksize * j, 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 

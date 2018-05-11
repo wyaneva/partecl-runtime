@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Vanya Yaneva, The University of Edinburgh
+ * Copyright 2016-2018 Vanya Yaneva, The University of Edinburgh
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
+#include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/fsm.cl"
+#include "../kernel-gen/fsm.h"
+#include "../utils/options.h"
+#include "../utils/read-test-cases.h"
+#include "../utils/timing.h"
+#include "../utils/utils.h"
+#include "cl-utils.h"
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../kernel-gen/cpu-gen.h"
-#include "../kernel-gen/fsm.h"
-#include "../kernel-gen/fsm.cl"
-#include "../utils/options.h"
-#include "../utils/read-test-cases.h"
-#include "../utils/timing.h"
-#include "../utils/utils.h"
-#include "cl-utils.h"
 
 #define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"
@@ -45,10 +45,12 @@ void read_expected_results(struct partecl_result *, int);
 void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           cl_command_queue queue_inputs,
                           struct transition *transitions, int num_transitions,
-                          int input_length, int output_length) {
+                          int input_length, int output_length,
+                          int num_test_cases) {
   // setup buffers
   size_t size_transitions = sizeof(struct transition) * num_transitions;
-  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions, size_transitions);
+  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
+         size_transitions);
   cl_int err;
   cl_mem buf_transitions =
       clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);
@@ -79,6 +81,10 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
   err = clSetKernelArg(knl, 5, sizeof(int), &output_length);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 5: %d\n", err);
+
+  err = clSetKernelArg(knl, 6, sizeof(int), &num_test_cases);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 6: %d\n", err);
 }
 
 int main(int argc, char **argv) {
@@ -92,7 +98,8 @@ int main(int argc, char **argv) {
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
-                   &num_runs, &ldim0, &do_choose_device, &num_chunks, &filename) == FAIL)
+                   &num_runs, &ldim0, &do_choose_device, &num_chunks,
+                   &filename) == FAIL)
     return 0;
 
   // check that the specified number of chunks divides the number of tests
@@ -128,36 +135,13 @@ int main(int argc, char **argv) {
   if (read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
-  // transpose inputs for coalesced reading on gpu
-  // TODO: This might be a potentially automatically generated code, as it
-  // depends on the name of the variable in side the input structure
-  size_t size_inputs_coal =
-      sizeof(char) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
-  char *inputs_coal = (char *)malloc(size_inputs_coal);
-  for (int i = 0; i < PADDED_INPUT_ARRAY_SIZE; i++) {
-    for (int j = 0; j < num_test_cases; j++) {
-      struct partecl_input current_input = inputs[j];
-      size_t idx = i * num_test_cases + j;
-      inputs_coal[idx] = current_input.input_ptr[i];
-    }
-  }
-
-  for (int i = 0; i < num_test_cases; i++) {
-    printf("%d %s\n", inputs[i].test_case_num, inputs[i].input_ptr);
-  }
-
-  for (int i = 0; i < PADDED_INPUT_ARRAY_SIZE * num_test_cases; i++) {
-    printf("%c", inputs_coal[i]);
-  }
-  printf("\n");
-
   // create kernel
   char *knl_text = read_file(GPU_SOURCE);
   if (!knl_text) {
     printf("Couldn't read file %s. Exiting!\n", GPU_SOURCE);
     return -1;
   }
-  
+
   cl_kernel knl =
       kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
   free(knl_text);
@@ -185,7 +169,30 @@ int main(int argc, char **argv) {
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
-                       input_length, output_length);
+                       input_length, output_length, num_test_cases);
+
+  // transpose inputs for coalesced reading on gpu
+  // TODO: This might be a potentially automatically generated code, as it
+  // depends on the name of the variable in side the input structure
+  // i = which input inside the test case
+  // j = which test case
+  // k = which symbol inside the input
+  size_t size_inputs_coal =
+      sizeof(char) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
+  char *inputs_coal = (char *)malloc(size_inputs_coal);
+  int max_num_inputs =
+      PADDED_INPUT_ARRAY_SIZE /
+      input_length; // this is the maximum number of inputs per test case
+  for (int i = 0; i < max_num_inputs; i++) { // which input inside the test case
+    for (int j = 0; j < num_test_cases; j++) { // which test case
+      struct partecl_input current_input = inputs[j];
+      for (int k = 0; k < input_length; k++) {
+        size_t idx = (i * num_test_cases + j) * input_length + k;
+        char current_symbol = current_input.input_ptr[i * input_length + k];
+        inputs_coal[idx] = current_symbol;
+      }
+    }
+  }
 
   if (do_time) {
     printf("Number of test cases: %d\n", num_test_cases);
@@ -223,9 +230,9 @@ int main(int argc, char **argv) {
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
       err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE,
-          sizeof(char) * chunksize * j, size_inputs_coal / num_chunks,
-          inputs_coal + chunksize * j, 0, NULL, &event_inputs[j]);
+          queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs_coal / num_chunks, inputs_coal + chunksize * j, 0, NULL,
+          &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 

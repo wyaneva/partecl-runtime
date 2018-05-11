@@ -10,7 +10,6 @@
 #define NUM_TRANSITIONS 1096
 #define OUTPUT_LENGTH 300
 #define INPUT_LENGTH 300
-#define NUM_TEST_CASES 5
 
 /**
  * Read the value of a parameter in the KISS2 file.
@@ -63,32 +62,28 @@ short lookup_symbol(int num_transitions, local struct transition transitions[],
  * Executes the FSM.
  * Returns the final state.
  */
-kernel void execute_fsm(global char *inputs, global struct partecl_result *results,
+kernel void execute_fsm(global char *inputs,
+                        global struct partecl_result *results,
                         global struct transition *transitions,
                         int num_transitions, int input_length,
-                        int output_length) {
+                        int output_length, int num_test_cases) {
 
   int idx = get_global_id(0);
-  //struct partecl_input input_gen = inputs[idx];
+  // struct partecl_input input_gen = inputs[idx];
   global struct partecl_result *result_gen = &results[idx];
-  result_gen->test_case_num = idx;
+  result_gen->test_case_num = idx + 1;
 
-  for (int i = 0; i < NUM_TEST_CASES * PADDED_INPUT_ARRAY_SIZE; i++) {
-    printf("%c", inputs[i]);
-  }
-  printf("\n");
-
-  //copy FSM into local memory
+  // copy FSM into local memory
   local struct transition transitions_local[NUM_TRANSITIONS];
   for (int i = 0; i < num_transitions; i++) {
     transitions_local[i] = transitions[i];
   }
 
   // input
-  global char *input_ptr = &inputs[idx*input_length];
+  global char *input_ptr = &inputs[idx * input_length];
 
   // output
-  //int length = (strlen(input_ptr) / input_length) * output_length;
+  // int length = (strlen(input_ptr) / input_length) * output_length;
 private
   char output[OUTPUT_LENGTH];
 private
@@ -96,7 +91,6 @@ private
 
   short current_state = transitions[0].current_state;
   while (*input_ptr != '\0') {
-    printf("%d %c\n", idx, *input_ptr);
     current_state =
         lookup_symbol(num_transitions, transitions_local, current_state,
                       input_ptr, input_length, output_ptr);
@@ -105,14 +99,14 @@ private
       // return;
     }
 
-    input_ptr += input_length*NUM_TEST_CASES;
+    input_ptr += input_length * num_test_cases;
     output_ptr += output_length;
   }
   int length = strlen(output);
 
   // print the output
-  //for (int i = 0; i < length; i++) {
-    // printf("%c", output[i]);
+  // for (int i = 0; i < length; i++) {
+  // printf("%c", output[i]);
   //}
   // printf("\n");
   // printf("Final state: %ld\n", current_state);

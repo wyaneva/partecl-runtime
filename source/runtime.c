@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#include "../kernel-gen/cpu-gen.h"
-#include "../kernel-gen/fsm.cl"
-#include "../kernel-gen/fsm.h"
 #include "../utils/options.h"
 #include "../utils/read-test-cases.h"
 #include "../utils/timing.h"
@@ -28,6 +25,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/fsm.cl"
+#include "../kernel-gen/fsm.h"
 
 #define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"

@@ -16,22 +16,18 @@
  * This refers to the .i, .o, .p and .s parameters
  */
 
-bool comparebinary(global char binary1[], char binary2[], int length) {
+bool compare_inputs(global char test_input[], char transition_input[], int length) {
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
-
   for (int i = 0; i < length; i++) {
-
-    if (binary1[i] == '\0' || binary2[i] == '\0')
+    if (test_input[i] == '\0' || transition_input[i] == '\0')
       return false;
-
-    if (binary1[i] == anychar || binary2[i] == anychar)
+    if (test_input[i] == anychar || transition_input[i] == anychar)
       continue;
 
-    if (binary1[i] != binary2[i])
+    if (test_input[i] != transition_input[i])
       return false;
   }
-
   return true;
 }
 
@@ -47,7 +43,7 @@ short lookup_symbol(int num_transitions, local struct transition transitions[],
 
     struct transition trans = transitions[i];
     if (trans.current_state == current_state &&
-        comparebinary(input, trans.input, length)) {
+        compare_inputs(input, trans.input, length)) {
       strcpy(output_ptr, trans.output);
       return trans.next_state;
     }

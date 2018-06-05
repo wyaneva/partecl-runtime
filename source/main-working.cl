@@ -101,15 +101,16 @@ private
   int length = strlen(output);
 
   // print the output
-  // for (int i = 0; i < length; i++) {
+  //for (int i = 0; i < length; i++) {
   // printf("%c", output[i]);
   //}
   // printf("\n");
-  // printf("Final state: %ld\n", current_state);
+  //printf("Final state: %ld\n", current_state);
 
   for (int i = 0; i < length; i++) {
     result_gen->output[i] = output[i];
   }
   result_gen->length = length;
   result_gen->final_state = current_state;
+
 }

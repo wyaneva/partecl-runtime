@@ -38,6 +38,13 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
+// FSM_OPTIMISE toggles optimisations
+// 1. coalesced memory allocation
+// 2. hash table storage
+#ifndef FSM_OPTIMISE
+#define FSM_OPTIMISE 0
+#endif
+
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
@@ -171,6 +178,7 @@ int main(int argc, char **argv) {
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
                        input_length, output_length, num_test_cases);
 
+#if FSM_OPTIMISE
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
   // depends on the name of the variable in side the input structure
@@ -193,6 +201,7 @@ int main(int argc, char **argv) {
       }
     }
   }
+#endif
 
   if (do_time) {
     printf("Number of test cases: %d\n", num_test_cases);
@@ -210,10 +219,17 @@ int main(int argc, char **argv) {
     cl_ulong ev_start_time, ev_end_time;
 
     // allocate device memory
+#if FSM_OPTIMISE
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
+#else
+    cl_mem buf_inputs =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer: %d\n", err);
+#endif
 
     cl_mem buf_results =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
@@ -229,12 +245,21 @@ int main(int argc, char **argv) {
 
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
+#if FSM_OPTIMISE
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
           size_inputs_coal / num_chunks, inputs_coal + chunksize * j, 0, NULL,
           &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#else
+      err = clEnqueueWriteBuffer(
+          queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs/ num_chunks, inputs + chunksize * j, 0, NULL,
+          &event_inputs[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#endif
 
       // add kernel arguments
       err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);

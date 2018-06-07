@@ -7,6 +7,13 @@
 //#include <stdlib.h>
 //#include <string.h>
 
+// FSM_OPTIMISE toggles optimisations
+// 1. coalesced memory allocation
+// 2. hash table storage
+#ifndef FSM_OPTIMISE
+#define FSM_OPTIMISE 0
+#endif
+
 #define NUM_TRANSITIONS 1096
 #define OUTPUT_LENGTH 300
 #define INPUT_LENGTH 300
@@ -16,7 +23,11 @@
  * This refers to the .i, .o, .p and .s parameters
  */
 
+#if FSM_OPTIMISE
 bool compare_inputs(global char test_input[], char transition_input[], int length) {
+#else
+bool compare_inputs(char test_input[], char transition_input[], int length) {
+#endif
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
   for (int i = 0; i < length; i++) {
@@ -35,9 +46,15 @@ bool compare_inputs(global char test_input[], char transition_input[], int lengt
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
+#if FSM_OPTIMISE
 short lookup_symbol(int num_transitions, local struct transition transitions[],
                     short current_state, global char input[], int length,
                     private char *output_ptr) {
+#else
+short lookup_symbol(int num_transitions, local struct transition transitions[],
+                    short current_state, char input[], int length,
+                    private char *output_ptr) {
+#endif
 
   for (int i = 0; i < num_transitions; i++) {
 
@@ -58,14 +75,25 @@ short lookup_symbol(int num_transitions, local struct transition transitions[],
  * Executes the FSM.
  * Returns the final state.
  */
+#if FSM_OPTIMISE
 kernel void execute_fsm(global char *inputs,
                         global struct partecl_result *results,
                         global struct transition *transitions,
                         int num_transitions, int input_length,
                         int output_length, int num_test_cases) {
+#else
+kernel void execute_fsm(global struct partecl_input *inputs,
+                        global struct partecl_result *results,
+                        global struct transition *transitions,
+                        int num_transitions, int input_length,
+                        int output_length, int num_test_cases) {
+#endif
 
   int idx = get_global_id(0);
-  // struct partecl_input input_gen = inputs[idx];
+#if FSM_OPTIMISE
+#else
+  struct partecl_input input_gen = inputs[idx];
+#endif
   global struct partecl_result *result_gen = &results[idx];
   result_gen->test_case_num = idx + 1;
 
@@ -76,7 +104,11 @@ kernel void execute_fsm(global char *inputs,
   }
 
   // input
+#if FSM_OPTIMISE
   global char *input_ptr = &inputs[idx * input_length];
+#else
+  char *input_ptr = input_gen.input_ptr;
+#endif
 
   // output
   // int length = (strlen(input_ptr) / input_length) * output_length;
@@ -95,17 +127,14 @@ private
       // return;
     }
 
+#if FSM_OPTIMISE
     input_ptr += input_length * num_test_cases;
+#else
+    input_ptr += input_length;
+#endif
     output_ptr += output_length;
   }
   int length = strlen(output);
-
-  // print the output
-  //for (int i = 0; i < length; i++) {
-  // printf("%c", output[i]);
-  //}
-  // printf("\n");
-  //printf("Final state: %ld\n", current_state);
 
   for (int i = 0; i < length; i++) {
     result_gen->output[i] = output[i];

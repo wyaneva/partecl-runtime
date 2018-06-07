@@ -1,6 +1,6 @@
 #generated folders, relative to the tested benchmark
-kernel-gen/*
-cpu-gen/*
+#kernel-gen/*
+#cpu-gen/*
 cuda/kernel/*
 
 #objects & executables

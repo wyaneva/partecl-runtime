@@ -27,7 +27,7 @@ bool compare_inputs(char test_input[], char transition_input[], int length) {
  */
 short lookup_symbol(int num_transitions, struct transition transitions[],
                     short current_state, char input[], int input_length,
-                    char *output_ptr, int output_length) {
+                    char *output_ptr) {
   for (int i = 0; i < num_transitions; i++) {
     struct transition trans = transitions[i];
     if (trans.current_state == current_state &&
@@ -58,7 +58,7 @@ void execute_fsm(struct transition *transitions, int num_transitions,
   while (*input_ptr != '\0') {
     int copy_current_state = current_state; // copy of current_state
     current_state = lookup_symbol(num_transitions, transitions, current_state, input_ptr,
-                      input_length, output_ptr, output_length);
+                      input_length, output_ptr);
 
     if (current_state == -1) {
       extra_length += output_length; // keeping a count of when output is not there.

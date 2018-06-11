@@ -1,0 +1,16 @@
+#ifndef COMPILE_CONST_H
+#define COMPILE_CONST_H
+
+#ifndef INPUT_LENGTH_FSM
+#define INPUT_LENGTH_FSM 7
+#endif
+
+#ifndef OUTPUT_LENGTH_FSM
+#define OUTPUT_LENGTH_FSM 7
+#endif
+
+#ifndef NUM_TRANSITIONS_FSM
+#define NUM_TRANSITIONS_FSM 5500
+#endif
+
+#endif

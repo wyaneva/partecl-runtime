@@ -1,13 +1,15 @@
 #ifndef FSM_H
 #define FSM_H
 
+#include "compile_const.h"
+
 enum fsm_parameter { INPUT_LENGTH, OUTPUT_LENGTH, NUM_TRANSITIONS, STATE_BASE };
 
 struct transition {
-  char input[7];
+  char input[INPUT_LENGTH_FSM];
   short current_state;
   short next_state;
-  char output[7];
+  char output[INPUT_LENGTH_FSM];
 };
 
 /**

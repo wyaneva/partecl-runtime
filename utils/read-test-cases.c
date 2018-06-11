@@ -18,10 +18,13 @@
 #include "../kernel-gen/cpu-gen.h"
 #include "../utils/utils.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define TC_FILENAME "../kernel-gen/tests.txt"
+#define NUMBER_OF_OCTAL_VALUE_CHARACTERS 3
 
 int parseString(char **arg, char **bptr) {
   assert(**bptr == '"' && "parseString should start with \".");
@@ -69,7 +72,106 @@ int parseString(char **arg, char **bptr) {
   return SUCCESS;
 }
 
-int copyToken(char **token, char **bptr) {
+void copyToken(char **token, char **bptr) {
+  // create current ptr
+  char *cptr = *bptr;
+
+  // count the characters we want to copy
+  int num_chars = 0;
+  while (*cptr != ' ' && *cptr != '\n') {
+    num_chars++;
+    cptr++;
+  }
+  cptr = *bptr;
+  *token = (char *)malloc(sizeof(char) * (num_chars + 1));
+
+  int char_position = 0;
+  while (*cptr != '\n' && *cptr != ' ') {
+    // non-printable characters are encoded as \[0-7][0-7][0-7] backslash and 3
+    // octal digits.
+    if (*cptr == '\\') {
+      cptr++;
+      if (*cptr == 'a' || *cptr == 'b' || *cptr == 't' || *cptr == 'n' ||
+          *cptr == 'v' || *cptr == 'f' || *cptr == 'r') {
+        switch (*cptr) {
+        case 'a':
+          (*token)[char_position] = (char)(7); // ascii value correspinding to
+                                               // \a and similarly for \t \n ...
+          break;
+        case 'b':
+          (*token)[char_position] = (char)(8);
+          break;
+        case 't':
+          (*token)[char_position] = (char)(9);
+          break;
+        case 'n':
+          (*token)[char_position] = (char)(10);
+          break;
+        case 'v':
+          (*token)[char_position] = (char)(11);
+          break;
+        case 'f':
+          (*token)[char_position] = (char)(12);
+          break;
+        case 'r':
+          (*token)[char_position] = (char)(13);
+          break;
+        }
+        char_position++;
+        cptr++;
+      } else {
+        cptr--;
+        int count = 0;
+        int decimal_value = 0;
+        // count < 3 is to check the next 3 characters after '\'
+        while (count < NUMBER_OF_OCTAL_VALUE_CHARACTERS && *cptr != '\n' &&
+               *cptr != ' ') {
+          cptr++;
+          if (*cptr > '7' || *cptr < '0') // if the character is not an
+                                          // octal-digit then the input was not
+                                          // an octal value.
+          {
+            count = 0;
+            decimal_value = 0;
+            break;
+          }
+          count++;
+          decimal_value +=
+              (*cptr - '0') * pow(8, NUMBER_OF_OCTAL_VALUE_CHARACTERS - count);
+          // decimal_value is the equivalent decimal value of the octal input.
+          // calculated as follows input octal => /abc = 64*a + 8*b + c
+        }
+
+        // next if branch taken if all the next three characters are all digits.
+
+        if (count == NUMBER_OF_OCTAL_VALUE_CHARACTERS) {
+          (*token)[char_position] =
+              (char)decimal_value; // direct conversion decimal to character
+          char_position++;
+          cptr++;
+        }
+
+        else {
+          (*token)[char_position] = '\\';
+          while (count > 0) {
+            cptr--;
+            count--;
+          }
+
+          char_position++;
+        }
+      }
+    } else {
+      (*token)[char_position] = *cptr;
+      char_position++;
+      cptr++;
+    }
+  }
+  (*token)[char_position] = '\0';
+  *bptr = cptr;
+}
+
+int copyFilename(char **token, char **bptr) {
   // create current ptr
   char *cptr = *bptr;
 
@@ -109,7 +211,7 @@ int parseStdin(char **arg, char **bptr) {
   } else {
     // find the filename
     char *filename;
-    copyToken(&filename, bptr);
+    copyFilename(&filename, bptr);
     // append ../kernel_gen/ directory to it, as input files will be copied
     // there
     char dirname[] = "../kernel-gen/";

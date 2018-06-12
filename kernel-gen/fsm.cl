@@ -4,7 +4,9 @@
 //#include <stdio.h>
 //#include <stdlib.h>
 //#include <string.h>
+
 #define NUMBER_OF_OCTAL_VALUE_CHARACTERS 3
+
 void copy_word(char **token, char **bptr) {
   // create current ptr
   char *cptr = *bptr;
@@ -224,8 +226,13 @@ struct transition *read_fsm(const char *filename, int *num_transitions,
   while (fgets(line, sizeof(line), file) != NULL && transptr != NULL) {
 
     char *lineptr = &line[0];
-    if (*lineptr == '\n' || *lineptr == ' ' || *lineptr == '.') {
-      // skip empty lines and formatting lines
+    if (*lineptr == '\n' || *lineptr == ' ') {
+      // skip empty lines 
+      continue;
+    }
+
+    if(*lineptr == '.' && (*(lineptr+1) != ' ')) {
+      // skip formatting lines
       continue;
     }
 

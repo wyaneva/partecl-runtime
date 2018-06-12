@@ -2,15 +2,15 @@
 #define COMPILE_CONST_H
 
 #ifndef INPUT_LENGTH_FSM
-#define INPUT_LENGTH_FSM 7
+#define INPUT_LENGTH_FSM 2
 #endif
 
 #ifndef OUTPUT_LENGTH_FSM
-#define OUTPUT_LENGTH_FSM 7
+#define OUTPUT_LENGTH_FSM 2
 #endif
 
 #ifndef NUM_TRANSITIONS_FSM
-#define NUM_TRANSITIONS_FSM 5500
+#define NUM_TRANSITIONS_FSM 5331
 #endif
 
 #endif

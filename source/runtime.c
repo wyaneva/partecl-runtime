@@ -54,6 +54,13 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           struct transition *transitions, int num_transitions,
                           int input_length, int output_length,
                           int num_test_cases) {
+
+  /*
+  for(int i = 0; i < num_transitions; i++) {
+    printf("CPU %s %d %d %s\n", transitions[i].input, transitions[i].current_state, transitions[i].next_state, transitions[i].output);
+  }
+  */
+
   // setup buffers
   size_t size_transitions = sizeof(struct transition) * num_transitions;
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
@@ -175,6 +182,7 @@ int main(int argc, char **argv) {
   printf("Reading fsm: %s\n", filename);
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);
+
   setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
                        input_length, output_length, num_test_cases);
 
@@ -253,10 +261,11 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
-      err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
-          size_inputs/ num_chunks, inputs + chunksize * j, 0, NULL,
-          &event_inputs[j]);
+      err =
+          clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
+                               sizeof(partecl_input) * chunksize * j,
+                               size_inputs / num_chunks, inputs + chunksize * j,
+                               0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif

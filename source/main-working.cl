@@ -7,39 +7,12 @@
 //#include <stdlib.h>
 //#include <string.h>
 
-/* FSM_OPTIMISE toggles optimisations
- *  1. coalesced memory allocation
- *  2. hash table storage
- */
-#ifndef FSM_OPTIMISE
-#define FSM_OPTIMISE 0
-#endif
-
-/* FSM_LOCAL_MEMORY puts the FSM in local memory
- * when there is enough space
- */
-#ifndef FSM_LOCAL_MEMORY
-#define FSM_LOCAL_MEMORY 0
-#endif
-
-#if FSM_LOCAL_MEMORY
-#define TRANSITIONS_ATTR local
-#else
-#define TRANSITIONS_ATTR global
-#endif
-
-#define OUTPUT_LENGTH 300
-
 /**
  * Read the value of a parameter in the KISS2 file.
  * This refers to the .i, .o, .p and .s parameters
  */
-#if FSM_OPTIMISE
-bool compare_inputs(global char test_input[], char transition_input[],
+bool compare_inputs(TEST_INPUTS_ATTR char test_input[], char transition_input[],
                     int length) {
-#else
-bool compare_inputs(char test_input[], char transition_input[], int length) {
-#endif
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
   for (int i = 0; i < length; i++) {
@@ -58,17 +31,10 @@ bool compare_inputs(char test_input[], char transition_input[], int length) {
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-#if FSM_OPTIMISE
 short lookup_symbol(int num_transitions,
                     TRANSITIONS_ATTR struct transition transitions[],
-                    short current_state, global char input[], int length,
+                    short current_state, TEST_INPUTS_ATTR char input[], int length,
                     private char *output_ptr) {
-#else
-short lookup_symbol(int num_transitions,
-                    TRANSITIONS_ATTR struct transition transitions[],
-                    short current_state, char input[], int length,
-                    private char *output_ptr) {
-#endif
 
   for (int i = 0; i < num_transitions; i++) {
     struct transition trans = transitions[i];
@@ -102,14 +68,10 @@ kernel void execute_fsm(global struct partecl_input *inputs,
                         int output_length, int num_test_cases) {
 #endif
 
-  if (num_transitions != NUM_TRANSITIONS_FSM) {
-    printf("NUM_TRANSITIONS_FSM is %d and num_transitions is %d. Exiting!\n",
-           NUM_TRANSITIONS_FSM, num_transitions);
+  if (num_transitions != NUM_TRANSITIONS_KERNEL) {
+    printf("NUM_TRANSITIONS_KERNEL is %d and num_transitions is %d. Exiting!\n",
+           NUM_TRANSITIONS_KERNEL, num_transitions);
     return;
-  }
-
-  for (int i = 0; i < num_transitions; i++) {
-    printf("GPU: %s %d %d %s\n", transitions[i].input, transitions[i].current_state, transitions[i].next_state, transitions[i].output);
   }
 
   int idx = get_global_id(0);
@@ -124,7 +86,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
 #if FSM_LOCAL_MEMORY
   // copy FSM into local memory
-  local struct transition transitions_local[NUM_TRANSITIONS_FSM];
+  local struct transition transitions_local[NUM_TRANSITIONS_KERNEL];
   for (int i = 0; i < num_transitions; i++) {
     transitions_local[i] = transitions[i];
   }
@@ -140,7 +102,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // output
   // int length = (strlen(input_ptr) / input_length) * output_length;
 private
-  char output[OUTPUT_LENGTH];
+  char output[OUTPUT_LENGTH_KERNEL];
 private
   char *output_ptr = output;
 
@@ -155,7 +117,7 @@ private
                                   input_ptr, input_length, output_ptr);
 #endif
     if (current_state == -1) {
-      return;
+      //return;
     }
 
 #if FSM_OPTIMISE

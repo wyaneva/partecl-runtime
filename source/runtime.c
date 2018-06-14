@@ -38,13 +38,6 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
-// FSM_OPTIMISE toggles optimisations
-// 1. coalesced memory allocation
-// 2. hash table storage
-#ifndef FSM_OPTIMISE
-#define FSM_OPTIMISE 0
-#endif
-
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
@@ -52,19 +45,10 @@ void read_expected_results(struct partecl_result *, int);
 void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           cl_command_queue queue_inputs,
                           struct transition *transitions, int num_transitions,
-                          int input_length, int output_length,
-                          int num_test_cases) {
-
-  /*
-  for(int i = 0; i < num_transitions; i++) {
-    printf("CPU %s %d %d %s\n", transitions[i].input, transitions[i].current_state, transitions[i].next_state, transitions[i].output);
-  }
-  */
+                          size_t size_transitions, int input_length,
+                          int output_length, int num_test_cases) {
 
   // setup buffers
-  size_t size_transitions = sizeof(struct transition) * num_transitions;
-  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
-         size_transitions);
   cl_int err;
   cl_mem buf_transitions =
       clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_transitions, NULL, &err);
@@ -149,17 +133,6 @@ int main(int argc, char **argv) {
   if (read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
-  // create kernel
-  char *knl_text = read_file(GPU_SOURCE);
-  if (!knl_text) {
-    printf("Couldn't read file %s. Exiting!\n", GPU_SOURCE);
-    return -1;
-  }
-
-  cl_kernel knl =
-      kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
-  free(knl_text);
-
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
                                                 num_test_cases);
@@ -183,8 +156,9 @@ int main(int argc, char **argv) {
   struct transition *transitions =
       read_fsm(filename, &num_transitions, &input_length, &output_length);
 
-  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
-                       input_length, output_length, num_test_cases);
+  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
+         size_transitions);
 
 #if FSM_OPTIMISE
   // transpose inputs for coalesced reading on gpu
@@ -210,6 +184,30 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+  // create kernel
+  char *knl_text = read_file(GPU_SOURCE);
+  if (!knl_text) {
+    printf("Couldn't read file %s. Exiting!\n", GPU_SOURCE);
+    return -1;
+  }
+
+  // will fsm fit in local memory?
+  int enough_local_memory = size_transitions > get_local_mem_size(&device) ? 0 : 1;
+
+  cl_kernel knl;
+  if (enough_local_memory) {
+    char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=1";
+    knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
+  } else {
+    char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=0";
+    knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
+  }
+  free(knl_text);
+
+  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
+                       size_transitions, input_length, output_length,
+                       num_test_cases);
 
   if (do_time) {
     printf("Number of test cases: %d\n", num_test_cases);

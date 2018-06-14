@@ -272,4 +272,16 @@ void create_command_queue(cl_command_queue *queue, cl_context *context,
   }
 }
 
+size_t get_local_mem_size(cl_device_id *dev) {
+
+  size_t local_memory_size = 0;
+  cl_int err =
+      clGetDeviceInfo(*dev, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_memory_size),
+                      &local_memory_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_LOCAL_MEM_SIZE): %d\n", err);
+
+  return local_memory_size;
+}
+
 #endif

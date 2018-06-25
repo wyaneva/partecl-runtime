@@ -2,6 +2,7 @@
 #include "cl-string.h"
 #include "fsm.h"
 #include "structs.h"
+#include "constants.h"
 //#include <stdbool.h>
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -32,7 +33,7 @@ bool compare_inputs(TEST_INPUTS_ATTR char test_input[], char transition_input[],
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(int num_transitions,
-                    TRANSITIONS_ATTR struct transition transitions[],
+                    FSM_ATTR struct transition transitions[],
                     short current_state, TEST_INPUTS_ATTR char input[], int length,
                     private char *output_ptr) {
 
@@ -54,16 +55,17 @@ short lookup_symbol(int num_transitions,
  * Executes the FSM.
  * Returns the final state.
  */
+
 #if FSM_OPTIMISE
 kernel void execute_fsm(global char *inputs,
                         global struct partecl_result *results,
-                        global struct transition *transitions,
+                        FSM_ATTR_KNL struct transition *transitions,
                         int num_transitions, int input_length,
                         int output_length, int num_test_cases) {
 #else
 kernel void execute_fsm(global struct partecl_input *inputs,
                         global struct partecl_result *results,
-                        global struct transition *transitions,
+                        FSM_ATTR_KNL struct transition *transitions,
                         int num_transitions, int input_length,
                         int output_length, int num_test_cases) {
 #endif

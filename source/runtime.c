@@ -192,16 +192,26 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  // will fsm fit in local memory?
-  int enough_local_memory = size_transitions > get_local_mem_size(&device) ? 0 : 1;
+  // will fsm fit in constant or local memory?
+  int enough_constant_memory =
+      size_transitions > get_constant_mem_size(&device) ? 0 : 1;
 
   cl_kernel knl;
-  if (enough_local_memory) {
-    char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=1";
+  if (enough_constant_memory) { // first try to fit in constant memory
+    char kernel_options[] = KERNEL_OPTIONS " -DFSM_CONSTANT_MEMORY=1";
     knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
-  } else {
-    char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=0";
-    knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
+
+  } else { // try to fit into local memory
+    int enough_local_memory =
+        size_transitions > get_local_mem_size(&device) ? 0 : 1;
+
+    if (enough_local_memory) {
+      char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=1";
+      knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
+
+    } else {
+      knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
+    }
   }
   free(knl_text);
 

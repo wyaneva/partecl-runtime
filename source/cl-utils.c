@@ -272,6 +272,18 @@ void create_command_queue(cl_command_queue *queue, cl_context *context,
   }
 }
 
+size_t get_constant_mem_size(cl_device_id *dev) {
+
+  size_t constant_memory_size = 0;
+  cl_int err =
+      clGetDeviceInfo(*dev, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(constant_memory_size),
+                      &constant_memory_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE): %d\n", err);
+
+  return constant_memory_size;
+}
+
 size_t get_local_mem_size(cl_device_id *dev) {
 
   size_t local_memory_size = 0;

@@ -11,7 +11,7 @@
  *  2. hash table storage
  */
 #ifndef FSM_OPTIMISE
-#define FSM_OPTIMISE 0
+#define FSM_OPTIMISE 1
 #endif
 
 #if FSM_OPTIMISE

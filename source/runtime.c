@@ -28,6 +28,7 @@
 #include "../kernel-gen/cpu-gen.h"
 #include "../kernel-gen/fsm.cl"
 #include "../kernel-gen/fsm.h"
+#include "constants.h"
 
 #define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"

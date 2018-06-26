@@ -97,10 +97,10 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // input
 #if FSM_OPTIMISE
   global char *input_ptr = &inputs[idx * input_length];
-  //keep this comment
 #else
   char *input_ptr = input_gen.input_ptr;
 #endif
+  //keep this comment
 
   // output
   // int length = (strlen(input_ptr) / input_length) * output_length;

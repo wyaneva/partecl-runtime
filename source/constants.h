@@ -11,7 +11,7 @@
  *  2. constant memory storage
  */
 #ifndef FSM_OPTIMISE
-#define FSM_OPTIMISE 1
+#define FSM_OPTIMISE 0
 #endif
 
 #if FSM_OPTIMISE

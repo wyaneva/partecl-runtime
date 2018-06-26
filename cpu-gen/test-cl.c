@@ -24,20 +24,20 @@ bool compare_inputs(char test_input[], char transition_input[], int length) {
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-short lookup_symbol(int num_transitions, struct transition transitions[],
-                    short current_state, char input[], int input_length,
-                    char *output_ptr) {
-  for (int i = 0; i < num_transitions; i++) {
-    struct transition trans = transitions[i];
-    if (trans.current_state == current_state &&
-        compare_inputs(input, trans.input, input_length)) {
+short lookup_symbol(transition *transitions, int start, int end, short current_state, char input[],
+                    int length, char *output_ptr) {
+
+  for (int i = start; i < end; i++) {
+    transition trans = transitions[i];
+    if (compare_inputs(input, trans.input, length)) {
       strcpy(output_ptr, trans.output);
       return trans.next_state;
     }
   }
 
-  printf("No transitions \n");
-  return -1; // In case of no transition -1 is returned
+  printf("\nCouldn't find transition for state %d, input %s.\n", current_state,
+         input);
+  return -1;
 }
 
 /**
@@ -45,10 +45,11 @@ short lookup_symbol(int num_transitions, struct transition transitions[],
  * Returns the final state.
  */
 void run_main(struct partecl_input input, struct partecl_result *result,
-                 struct transition *transitions, int num_transitions,
-                 int input_length, int output_length) {
+              transition *transitions, int offsets[],
+              int num_transitions_per_state[], short starting_state,
+              int input_length, int output_length) {
 
-  char* input_ptr = input.input_ptr;
+  char *input_ptr = input.input_ptr;
   char* output_ptr = result->output;
 
   // output
@@ -56,14 +57,17 @@ void run_main(struct partecl_input input, struct partecl_result *result,
   //char output[length];
   //char *output_ptr = output;
 
-  short current_state = transitions[0].current_state;
+  short current_state = starting_state; // transitions[0].current_state;
   while (*input_ptr != '\0') {
-    current_state = lookup_symbol(num_transitions, transitions, current_state,
-                                  input_ptr, input_length, output_ptr);
 
     if (current_state == -1) {
       return;
     }
+
+    int start = offsets[current_state];
+    int end = start + num_transitions_per_state[current_state];
+    current_state = lookup_symbol(transitions, start, end, current_state,
+                                  input_ptr, input_length, output_ptr);
 
     input_ptr += input_length;
     output_ptr += output_length;

@@ -13,6 +13,15 @@
 #define OUTPUT_LENGTH_FSM 2
 #endif
 
+#ifndef NUM_STATES
+#define NUM_STATES 43
+#endif
+
+#ifndef MAX_NUM_TRANSITIONS_PER_STATE
+#define MAX_NUM_TRANSITIONS_PER_STATE 255
+//8 //255 - for ASCII
+#endif
+
 /********************************/
 
 /*****************************

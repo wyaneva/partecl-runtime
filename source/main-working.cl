@@ -32,15 +32,13 @@ bool compare_inputs(TEST_INPUTS_ATTR char test_input[], char transition_input[],
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-short lookup_symbol(int num_transitions,
-                    FSM_ATTR struct transition transitions[],
-                    short current_state, TEST_INPUTS_ATTR char input[], int length,
-                    private char *output_ptr) {
+short lookup_symbol(FSM_ATTR transition transitions[], int start, int end,
+                    short current_state, TEST_INPUTS_ATTR char input[],
+                    int length, private char *output_ptr) {
 
-  for (int i = 0; i < num_transitions; i++) {
-    struct transition trans = transitions[i];
-    if (trans.current_state == current_state &&
-        compare_inputs(input, trans.input, length)) {
+  for (int i = start; i < end; i++) {
+    transition trans = transitions[i];
+    if (compare_inputs(input, trans.input, length)) {
       strcpy(output_ptr, trans.output);
       return trans.next_state;
     }
@@ -57,24 +55,20 @@ short lookup_symbol(int num_transitions,
  */
 
 #if FSM_OPTIMISE
-kernel void execute_fsm(global char *inputs,
-                        global struct partecl_result *results,
-                        FSM_ATTR_KNL struct transition *transitions,
-                        int num_transitions, int input_length,
-                        int output_length, int num_test_cases) {
+kernel void
+execute_fsm(global char *inputs, global struct partecl_result *results,
+            FSM_ATTR_KNL transition *transitions, FSM_ATTR_KNL int *offsets,
+            FSM_ATTR_KNL int *num_transitions_per_state, int starting_state,
+            int input_length, int output_length, int num_test_cases) {
 #else
 kernel void execute_fsm(global struct partecl_input *inputs,
                         global struct partecl_result *results,
-                        FSM_ATTR_KNL struct transition *transitions,
-                        int num_transitions, int input_length,
-                        int output_length, int num_test_cases) {
+                        FSM_ATTR_KNL transition *transitions,
+                        FSM_ATTR_KNL int *offsets,
+                        FSM_ATTR_KNL int *num_transitions_per_state,
+                        int starting_state, int input_length, int output_length,
+                        int num_test_cases) {
 #endif
-
-  if (num_transitions != NUM_TRANSITIONS_KERNEL) {
-    printf("NUM_TRANSITIONS_KERNEL is %d and num_transitions is %d. Exiting!\n",
-           NUM_TRANSITIONS_KERNEL, num_transitions);
-    return;
-  }
 
   int idx = get_global_id(0);
 
@@ -88,8 +82,8 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
 #if FSM_LOCAL_MEMORY
   // copy FSM into local memory
-  local struct transition transitions_local[NUM_TRANSITIONS_KERNEL];
-  for (int i = 0; i < num_transitions; i++) {
+  local transition transitions_local[NUM_TRANSITIONS_KERNEL];
+  for (int i = 0; i < NUM_TRANSITIONS_KERNEL; i++) {
     transitions_local[i] = transitions[i];
   }
 #endif
@@ -109,19 +103,22 @@ private
 private
   char *output_ptr = output;
 
-  short current_state = transitions[0].current_state;
+  short current_state = starting_state; // transitions[0].current_state;
   while (*input_ptr != '\0') {
-#if FSM_LOCAL_MEMORY
-    current_state =
-        lookup_symbol(num_transitions, transitions_local, current_state,
-                      input_ptr, input_length, output_ptr);
-#else
-    current_state = lookup_symbol(num_transitions, transitions, current_state,
-                                  input_ptr, input_length, output_ptr);
-#endif
+
     if (current_state == -1) {
       //return;
     }
+
+    int start = offsets[current_state];
+    int end = start + num_transitions_per_state[current_state];
+#if FSM_LOCAL_MEMORY
+    current_state = lookup_symbol(transitions_local, start, end, current_state,
+                                  input_ptr, input_length, output_ptr);
+#else
+    current_state = lookup_symbol(transitions, start, end, current_state,
+                                  input_ptr, input_length, output_ptr);
+#endif
 
 #if FSM_OPTIMISE
     input_ptr += input_length * num_test_cases;

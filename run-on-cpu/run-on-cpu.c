@@ -28,15 +28,17 @@
 
 //int run_main(struct partecl_input input, struct partecl_result *result);
 int run_main(struct partecl_input input, struct partecl_result *result,
-             struct transition *transitions, int num_transitions,
+             transition *transitions, int offsets[],
+             int num_transitions_per_state[], short starting_state,
              int input_length, int output_length);
 
 void run_on_cpu(struct partecl_input input, struct partecl_result *result,
-                struct transition *transitions, int num_transitions,
-                int input_length, int output_length) {
+             transition *transitions, int offsets[],
+             int num_transitions_per_state[], short starting_state,
+             int input_length, int output_length) {
 
   result->test_case_num = input.test_case_num;
-  run_main(input, result, transitions, num_transitions, input_length, output_length);
+  run_main(input, result, transitions, offsets, num_transitions_per_state, starting_state, input_length, output_length);
 }
 
 int main(int argc, char **argv) {
@@ -71,6 +73,7 @@ int main(int argc, char **argv) {
 
   // execute the main code - TODO: plug it automatically
   int num_transitions;
+  int starting_state;
   int input_length;
   int output_length;
   if (filename == NULL) {
@@ -78,8 +81,36 @@ int main(int argc, char **argv) {
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
-  struct transition *transitions =
-      read_fsm(filename, &num_transitions, &input_length, &output_length);
+  int *num_transitions_per_state = (int *)malloc(sizeof(int) * NUM_STATES);
+  transition *transitions_unopt =
+      read_fsm(filename, num_transitions_per_state, &num_transitions, &starting_state, &input_length, &output_length);
+
+  if (transitions_unopt == NULL) {
+    printf("Reading the FSM failed.");
+    return -1;
+  }
+
+  transition *transitions =
+      (transition *)malloc(sizeof(transition) * num_transitions);
+  int offsets[NUM_STATES];
+
+  int idx = 0;
+  int current_offset = 0;
+  for (int i = 0; i < NUM_STATES; i++) {
+    for (int j = 0; j < MAX_NUM_TRANSITIONS_PER_STATE; j++) {
+      if (j >= num_transitions_per_state[i])
+        break;
+
+      transition current_trans = transitions_unopt[i * MAX_NUM_TRANSITIONS_PER_STATE + j];
+
+      transitions[idx] = current_trans;
+      idx++;
+    }
+
+    int prev = i > 0 ? i - 1 : 0;
+    offsets[i] = current_offset + num_transitions_per_state[prev];
+    current_offset = offsets[i];
+  }
 
   if (do_time)
     printf("Time in ms\n");
@@ -88,11 +119,14 @@ int main(int argc, char **argv) {
     struct timespec time1, time2;
     get_timestamp(&time1);
 
-#pragma omp parallel for default(none) shared(num_test_cases, inputs, results, transitions, num_transitions, input_length, output_length) \
-    schedule(static)
+#pragma omp parallel for default(none)                                         \
+    shared(num_test_cases, inputs, results, transitions, offsets,              \
+           num_transitions_per_state, starting_state, input_length,            \
+           output_length) schedule(static)
     for (int j = 0; j < num_test_cases; j++) {
-      run_on_cpu(inputs[j], &results[j], transitions, num_transitions,
-                 input_length, output_length);
+      run_on_cpu(inputs[j], &results[j], transitions, offsets,
+                 num_transitions_per_state, starting_state, input_length,
+                 output_length);
     }
 
     get_timestamp(&time2);

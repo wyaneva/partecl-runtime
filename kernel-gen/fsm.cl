@@ -44,7 +44,7 @@ void copy_word_static(char token[], char **bptr) {
         switch (*cptr) {
         case 'a':
           token[char_position] = (char)(7); // ascii value correspinding to \a
-                                           // and similarly for \t \n ...
+                                            // and similarly for \t \n ...
           break;
         case 'b':
           token[char_position] = (char)(8);
@@ -72,27 +72,29 @@ void copy_word_static(char token[], char **bptr) {
         int count = 0;
         int decimal_value = 0;
         // count < 3 is to check the next 3 characters after '\'
-        while (count < NUMBER_OF_OCTAL_VALUE_CHARACTERS && *cptr != '\n' && *cptr != ' ')
-        {
+        while (count < NUMBER_OF_OCTAL_VALUE_CHARACTERS && *cptr != '\n' &&
+               *cptr != ' ') {
           cptr++;
-          if (*cptr > '7' || *cptr < '0') // if the character is not an octal-digit
-                                          // then the input was not an octal
-                                          // value.
+          if (*cptr > '7' || *cptr < '0') // if the character is not an
+                                          // octal-digit then the input was not
+                                          // an octal value.
           {
             count = 0;
             decimal_value = 0;
             break;
           }
           count++;
-          decimal_value += (*cptr - '0') * pow(8, NUMBER_OF_OCTAL_VALUE_CHARACTERS - count); 
-          // decimal_value is the equivalent decimal value of the octal input. calculated as follows
-          // input octal => /abc = 64*a + 8*b + c                                                                                                      
-        }                             
-        
+          decimal_value +=
+              (*cptr - '0') * pow(8, NUMBER_OF_OCTAL_VALUE_CHARACTERS - count);
+          // decimal_value is the equivalent decimal value of the octal input.
+          // calculated as follows input octal => /abc = 64*a + 8*b + c
+        }
+
         // next if branch taken if all the next three characters are all digits.
 
-        if (count == NUMBER_OF_OCTAL_VALUE_CHARACTERS ) {
-          token[char_position] = (char)decimal_value; // direct conversion decimal to character
+        if (count == NUMBER_OF_OCTAL_VALUE_CHARACTERS) {
+          token[char_position] =
+              (char)decimal_value; // direct conversion decimal to character
           char_position++;
           cptr++;
         }
@@ -178,8 +180,9 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
 /**
  * Read an FSM from a KISS2 file
  */
-struct transition *read_fsm(const char *filename, int *num_transitions,
-                            int *input_length, int *output_length) {
+transition *read_fsm(const char *filename, int *num_transitions_per_state,
+                     int *num_transitions, int *starting_state,
+                     int *input_length, int *output_length) {
 
   // read the parameters
   // number of states
@@ -220,18 +223,24 @@ struct transition *read_fsm(const char *filename, int *num_transitions,
   }
 
   // read transitions line for line
-  struct transition *transitions = (struct transition *)malloc(
-      sizeof(struct transition) * (*num_transitions));
-  struct transition *transptr = &transitions[0];
-  while (fgets(line, sizeof(line), file) != NULL && transptr != NULL) {
+  transition *transitions = (transition *)malloc(
+      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE);
+
+  for(int i = 0; i < NUM_STATES; i++) {
+    num_transitions_per_state[i] = 0;
+  }
+
+  transition transition;
+  *starting_state = -1;
+  while (fgets(line, sizeof(line), file) != NULL) {
 
     char *lineptr = &line[0];
     if (*lineptr == '\n' || *lineptr == ' ') {
-      // skip empty lines 
+      // skip empty lines
       continue;
     }
 
-    if(*lineptr == '.' && (*(lineptr+1) != ' ')) {
+    if (*lineptr == '.' && (*(lineptr + 1) != ' ')) {
       // skip formatting lines
       continue;
     }
@@ -240,20 +249,27 @@ struct transition *read_fsm(const char *filename, int *num_transitions,
     char *curtoken;
 
     // input
-    copy_word_static(transptr->input, &lineptr);
+    copy_word_static(transition.input, &lineptr);
 
     // current state
     copy_word(&curtoken, &lineptr);
-    transptr->current_state = state_to_decimal(curtoken, state_base);
+    short current_state = state_to_decimal(curtoken, state_base);
 
     // next state
     copy_word(&curtoken, &lineptr);
-    transptr->next_state = state_to_decimal(curtoken, state_base);
+    transition.next_state = state_to_decimal(curtoken, state_base);
 
     // output
-    copy_word_static(transptr->output, &lineptr);
+    copy_word_static(transition.output, &lineptr);
 
-    transptr++;
+    int idx = num_transitions_per_state[current_state];
+    transitions[current_state * MAX_NUM_TRANSITIONS_PER_STATE + idx] =
+        transition;
+    num_transitions_per_state[current_state]++;
+
+    if(*starting_state == -1) {
+      *starting_state = current_state;
+    }
   }
 
   return transitions;

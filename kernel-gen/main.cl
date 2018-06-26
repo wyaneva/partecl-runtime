@@ -6,18 +6,22 @@
 //#include <stdlib.h>
 //#include <string.h>
 
-bool compare_inputs(char test_input[], char transition_input[], int length) {
+bool compare_inputs(char binary1[], char binary2[], int length) {
 
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
+
   for (int i = 0; i < length; i++) {
-    if (test_input[i] == '\0' || transition_input[i] == '\0')
+
+    if (binary1[i] == '\0' || binary2[i] == '\0')
       return false;
-    if (test_input[i] == anychar || transition_input[i] == anychar)
+
+    if (binary1[i] == anychar || binary2[i] == anychar)
       continue;
 
-    if (test_input[i] != transition_input[i])
+    if (binary1[i] != binary2[i])
       return false;
   }
+
   return true;
 }
 
@@ -25,58 +29,57 @@ bool compare_inputs(char test_input[], char transition_input[], int length) {
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-short lookup_symbol(int num_transitions, struct transition transitions[],
-                    short current_state, char input[], int input_length,
-                    char *output_ptr) {
-  for (int i = 0; i < num_transitions; i++) {
-    struct transition trans = transitions[i];
-    if (trans.current_state == current_state &&
-        compare_inputs(input, trans.input, input_length)) {
+short lookup_symbol(transition *transitions, int start, int end, short current_state, char input[],
+                    int length, char *output_ptr) {
+
+  for (int i = start; i < end; i++) {
+    transition trans = transitions[i];
+    if (compare_inputs(input, trans.input, length)) {
       strcpy(output_ptr, trans.output);
       return trans.next_state;
     }
   }
 
-  /*printf("No transitions \n");*/
-  return -1; // In case of no transition -1 is returned
+  /*printf("\nCouldn't find transition for state %d, input %s.\n", current_state,
+         input);*/
+  return -1;
 }
 
 /**
  * Executes the FSM.
  * Returns the final state.
  */
+void execute_fsm(transition *transitions, int offsets[],
+                 int num_transitions_per_state[], short starting_state, char *input_ptr,
+                 int input_length, int output_length) {
 
-void execute_fsm(struct transition *transitions, int num_transitions,
-                 char *input_ptr, int input_length, int output_length) {
-
+  // output
   int length = strlen(input_ptr) / input_length * output_length;
   char output[length];
-  int extra_length = 0;
   char *output_ptr = output;
-  short current_state = transitions[0].current_state;
-  /*printf("%d\n", current_state);*/
+
+  short current_state = starting_state; // transitions[0].current_state;
   while (*input_ptr != '\0') {
-    int copy_current_state = current_state; // copy of current_state
-    current_state = lookup_symbol(num_transitions, transitions, current_state, input_ptr,
-                      input_length, output_ptr);
 
     if (current_state == -1) {
-      extra_length += output_length; // keeping a count of when output is not there.
-      current_state = copy_current_state; // resetting the current_state
-      input_ptr += input_length; // moving only the input pointer ahead
-      continue;
+      return;
     }
-    
+
+    int start = offsets[current_state];
+    int end = start + num_transitions_per_state[current_state];
+    current_state = lookup_symbol(transitions, start, end, current_state,
+                                  input_ptr, input_length, output_ptr);
+
     input_ptr += input_length;
     output_ptr += output_length;
-
-    /*printf("%d\n", current_state);*/
   }
-  
-  for (int i = 0; i < length - extra_length; ++i)
-    /*printf("%c", output[i]);*/
 
+  // print the output
+  for (int i = 0; i < length; i++) {
+    /*printf("%c", output[i]);*/
+  }
   /*printf("\n");*/
+  /*printf("Final state: %d\n", current_state);*/
 }
 
 __kernel void main_kernel(__global struct partecl_input* inputs, __global struct partecl_result* results) {
@@ -99,15 +102,43 @@ __kernel void main_kernel(__global struct partecl_input* inputs, __global struct
   // read the fsm
   // transitions
   int num_transitions;
+  int starting_state;
   int input_length;
   int output_length;
-  struct transition *transitions =
-      read_fsm(filename, &num_transitions, &input_length, &output_length);
+  int *num_transitions_per_state = (int *)malloc(sizeof(int) * NUM_STATES);
+  transition *transitions_unopt =
+      read_fsm(filename, num_transitions_per_state, &num_transitions, &starting_state,
+               &input_length, &output_length);
 
-  if (transitions != NULL) {
-    execute_fsm(transitions, num_transitions, input_ptr, input_length,
-                output_length);
+  if (transitions_unopt == NULL) {
+    /*printf("Reading the FSM failed.");*/
+    //return -1;
   }
+
+  transition *transitions =
+      (transition *)malloc(sizeof(transition) * num_transitions);
+  int offsets[NUM_STATES];
+
+  int idx = 0;
+  int current_offset = 0;
+  for (int i = 0; i < NUM_STATES; i++) {
+    for (int j = 0; j < MAX_NUM_TRANSITIONS_PER_STATE; j++) {
+      if (j >= num_transitions_per_state[i])
+        break;
+
+      transition current_trans = transitions_unopt[i * MAX_NUM_TRANSITIONS_PER_STATE + j];
+
+      transitions[idx] = current_trans;
+      idx++;
+    }
+
+    int prev = i > 0 ? i - 1 : 0;
+    offsets[i] = current_offset + num_transitions_per_state[prev];
+    current_offset = offsets[i];
+  }
+
+  execute_fsm(transitions, offsets, num_transitions_per_state, starting_state,
+              input_ptr, input_length, output_length);
   result_gen->final_state = current_state;
   for(int i = 0; i < length; i++)
   {

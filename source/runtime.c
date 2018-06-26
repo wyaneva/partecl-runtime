@@ -45,8 +45,10 @@ void read_expected_results(struct partecl_result *, int);
 
 void setup_common_buffers(cl_context ctx, cl_kernel knl,
                           cl_command_queue queue_inputs,
-                          struct transition *transitions, int num_transitions,
-                          size_t size_transitions, int input_length,
+                          transition *transitions, size_t size_transitions, 
+                          int *offsets, int *transitions_per_state,
+                          int starting_state,
+                          int input_length,
                           int output_length, int num_test_cases) {
 
   // setup buffers
@@ -56,6 +58,17 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
   if (err != CL_SUCCESS)
     printf("error: clCreateBuffer buf_transitions: %d\n", err);
 
+  size_t size_arrays = sizeof(int)*NUM_STATES;
+  cl_mem buf_offsets =
+      clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_arrays, NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_offsets: %d\n", err);
+
+  cl_mem buf_trans_per_state =
+      clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_arrays, NULL, &err);
+  if (err != CL_SUCCESS)
+    printf("error: clCreateBuffer buf_trans_per_state: %d\n", err);
+
   // transfer data to GPU
   cl_event event_common_buffers;
   err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_FALSE, 0,
@@ -64,26 +77,48 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
   if (err != CL_SUCCESS)
     printf("error: clEnqueueWriteBuffer buf_transitions: %d\n", err);
 
+  err = clEnqueueWriteBuffer(queue_inputs, buf_offsets, CL_FALSE, 0,
+                             size_arrays, offsets, 0, NULL,
+                             &event_common_buffers);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_offsets: %d\n", err);
+
+
+  err = clEnqueueWriteBuffer(queue_inputs, buf_trans_per_state, CL_FALSE, 0,
+                             size_arrays, transitions_per_state, 0, NULL,
+                             &event_common_buffers);
+  if (err != CL_SUCCESS)
+    printf("error: clEnqueueWriteBuffer buf_trans_per_state: %d\n", err);
+
+
   // set kernels
   err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_transitions);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 2: %d\n", err);
 
-  err = clSetKernelArg(knl, 3, sizeof(int), &num_transitions);
+  err = clSetKernelArg(knl, 3, sizeof(cl_mem), &buf_offsets);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 3: %d\n", err);
 
-  err = clSetKernelArg(knl, 4, sizeof(int), &input_length);
+  err = clSetKernelArg(knl, 4, sizeof(cl_mem), &buf_trans_per_state);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 4: %d\n", err);
 
-  err = clSetKernelArg(knl, 5, sizeof(int), &output_length);
+  err = clSetKernelArg(knl, 5, sizeof(int), &starting_state);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 5: %d\n", err);
 
-  err = clSetKernelArg(knl, 6, sizeof(int), &num_test_cases);
+  err = clSetKernelArg(knl, 6, sizeof(int), &input_length);
   if (err != CL_SUCCESS)
     printf("error: clSetKernelArg 6: %d\n", err);
+
+  err = clSetKernelArg(knl, 7, sizeof(int), &output_length);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 7: %d\n", err);
+
+  err = clSetKernelArg(knl, 8, sizeof(int), &num_test_cases);
+  if (err != CL_SUCCESS)
+    printf("error: clSetKernelArg 8: %d\n", err);
 }
 
 int main(int argc, char **argv) {
@@ -147,6 +182,7 @@ int main(int argc, char **argv) {
 
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
+  int starting_state;
   int input_length;
   int output_length;
   if (filename == NULL) {
@@ -154,12 +190,45 @@ int main(int argc, char **argv) {
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
-  struct transition *transitions =
-      read_fsm(filename, &num_transitions, &input_length, &output_length);
+  int *num_transitions_per_state = (int *)malloc(sizeof(int) * NUM_STATES);
+  transition *transitions_unopt =
+      read_fsm(filename, num_transitions_per_state, &num_transitions, &starting_state, &input_length, &output_length);
 
-  size_t size_transitions = sizeof(struct transition) * num_transitions;
+  if (transitions_unopt == NULL) {
+    printf("Reading the FSM failed.");
+    return -1;
+  }
+  if (num_transitions != NUM_TRANSITIONS_KERNEL) {
+    printf("NUM_TRANSITIONS_KERNEL is %d and num_transitions is %d. Exiting!\n",
+           NUM_TRANSITIONS_KERNEL, num_transitions);
+    return -1;
+  }
+
+  size_t size_transitions = sizeof(transition) * num_transitions;
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
+
+  transition *transitions =
+      (transition *)malloc(sizeof(transition) * num_transitions);
+  int offsets[NUM_STATES];
+
+  int idx = 0;
+  int current_offset = 0;
+  for (int i = 0; i < NUM_STATES; i++) {
+    for (int j = 0; j < MAX_NUM_TRANSITIONS_PER_STATE; j++) {
+      if (j >= num_transitions_per_state[i])
+        break;
+
+      transition current_trans = transitions_unopt[i * MAX_NUM_TRANSITIONS_PER_STATE + j];
+
+      transitions[idx] = current_trans;
+      idx++;
+    }
+
+    int prev = i > 0 ? i - 1 : 0;
+    offsets[i] = current_offset + num_transitions_per_state[prev];
+    current_offset = offsets[i];
+  }
 
 #if FSM_OPTIMISE
   // transpose inputs for coalesced reading on gpu
@@ -216,9 +285,9 @@ int main(int argc, char **argv) {
   }
   free(knl_text);
 
-  setup_common_buffers(ctx, knl, queue_inputs, transitions, num_transitions,
-                       size_transitions, input_length, output_length,
-                       num_test_cases);
+  setup_common_buffers(ctx, knl, queue_inputs, transitions, size_transitions,
+                       offsets, num_transitions_per_state, starting_state,
+                       input_length, output_length, num_test_cases);
 
   if (do_time) {
     printf("Number of test cases: %d\n", num_test_cases);

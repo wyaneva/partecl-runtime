@@ -8,7 +8,7 @@
 /*
  * FSM_OPTIMISE toggles optimisations
  *  1. coalesced memory allocation
- *  2. hash table storage
+ *  2. constant memory storage
  */
 #ifndef FSM_OPTIMISE
 #define FSM_OPTIMISE 1

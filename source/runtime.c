@@ -194,8 +194,12 @@ int main(int argc, char **argv) {
   }
 
   // will fsm fit in constant or local memory?
+#if FSM_OPTIMISE
   int enough_constant_memory =
       size_transitions > get_constant_mem_size(&device) ? 0 : 1;
+#else
+  int enough_constant_memory = 0;
+#endif
 
   cl_kernel knl;
   if (enough_constant_memory) { // first try to fit in constant memory

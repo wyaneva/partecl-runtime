@@ -119,6 +119,7 @@ int main(int argc, char **argv) {
 
   // pad the test case number to nearest multiple of workgroup size
   pad_test_case_number(&device, &num_test_cases);
+  printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests
   // equally
@@ -233,7 +234,6 @@ int main(int argc, char **argv) {
                        num_test_cases);
 
   if (do_time) {
-    printf("Number of test cases: %d\n", num_test_cases);
     printf("Time in ms\n");
     printf("trans-inputs\ttrans-results\texec-kernel\ttime-total\n");
   }
@@ -409,8 +409,10 @@ void pad_test_case_number(cl_device_id *device, int *num_test_cases) {
   if (err != CL_SUCCESS)
     printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
 
-  int coef = *num_test_cases / dims[0];
-  *num_test_cases = (coef + 1) * dims[0];
+  if (*num_test_cases % dims[0] != 0) {
+    int coef = *num_test_cases / dims[0];
+    *num_test_cases = (coef + 1) * dims[0];
+  }
 }
 
 void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],

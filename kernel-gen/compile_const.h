@@ -20,7 +20,7 @@
  *****************************/
 
 #ifndef NUM_TRANSITIONS_KERNEL
-#define NUM_TRANSITIONS_KERNEL 5331
+#define NUM_TRANSITIONS_KERNEL 8640
 #endif
 
 #ifndef OUTPUT_LENGTH_KERNEL

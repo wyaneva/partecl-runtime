@@ -6,6 +6,19 @@
  **********************************/
 
 /*
+ * BMRK toggles special code for network and open source benchmarks
+ */
+#ifndef BMRK_NETWORK
+#define BMRK_NETWORK 1
+#endif
+
+#if BMRK_NETWORK
+#define BMRK_OS 0
+#else
+#define BMRK_OS 1
+#endif
+
+/*
  * FSM_OPTIMISE_COAL toggles optimisations
  *  1. coalesced memory allocation
  */

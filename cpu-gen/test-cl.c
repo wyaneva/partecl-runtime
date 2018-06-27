@@ -2,17 +2,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../source/constants.h"
 #include "../kernel-gen/fsm.h"
 #include "../kernel-gen/structs.h"
 
 bool compare_inputs(char test_input[], char transition_input[], int length) {
 
+#if BMRK_OS
   char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
+#endif
+
   for (int i = 0; i < length; i++) {
-    if (test_input[i] == '\0' || transition_input[i] == '\0')
+    if (test_input[i] == '\0' || transition_input[i] == '\0') {
       return false;
-    if (test_input[i] == anychar || transition_input[i] == anychar)
+    }
+
+#if BMRK_OS
+    if (test_input[i] == anychar || transition_input[i] == anychar) {
       continue;
+    }
+#endif
+
+#if BMRK_NETWORK
+    if (test_input[i] == '\n') {
+      continue;
+    }
+#endif
 
     if (test_input[i] != transition_input[i])
       return false;

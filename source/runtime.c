@@ -39,6 +39,7 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
+void pad_test_case_number(cl_device_id *, int *);
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
@@ -122,6 +123,8 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
 }
 
 int main(int argc, char **argv) {
+
+  // read command line options
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
@@ -133,25 +136,9 @@ int main(int argc, char **argv) {
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &filename) == FAIL)
-    return 0;
-
-  // check that the specified number of chunks divides the number of tests
-  // equally
-  if (num_test_cases % num_chunks != 0) {
-    printf("Please provide a number of chunks which divides the number of test "
-           "cases equally.\n");
+                   &filename) == FAIL) {
     return 0;
   }
-  int chunksize = num_test_cases / num_chunks;
-
-  // allocate CPU memory and generate test cases
-  struct partecl_input *inputs;
-  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input *)malloc(size_inputs);
-  struct partecl_result *results;
-  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(size_results);
 
   // create queue and context
   cl_context ctx;
@@ -164,6 +151,27 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_inputs, &ctx, &device);
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
+
+  // pad the test case number to nearest multiple of workgroup size
+  pad_test_case_number(&device, &num_test_cases);
+
+  // check that the specified number of chunks divides the number of tests
+  // equally
+  if (num_test_cases % num_chunks != 0) {
+    printf("Please provide a number of chunks which divides the padeed number "
+           "of test cases (%d) equally.\n",
+           num_test_cases);
+    return 0;
+  }
+  int chunksize = num_test_cases / num_chunks;
+
+  // allocate CPU memory and generate test cases
+  struct partecl_input *inputs;
+  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input *)malloc(size_inputs);
+  struct partecl_result *results;
+  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
+  results = (struct partecl_result *)malloc(size_results);
 
   // read the test cases
   if (read_test_cases(inputs, num_test_cases) == FAIL)
@@ -230,7 +238,7 @@ int main(int argc, char **argv) {
     current_offset = offsets[i];
   }
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
   // depends on the name of the variable in side the input structure
@@ -263,8 +271,12 @@ int main(int argc, char **argv) {
   }
 
   // will fsm fit in constant or local memory?
+#if FSM_OPTIMISE_CONST_MEM
   int enough_constant_memory =
       size_transitions > get_constant_mem_size(&device) ? 0 : 1;
+#else
+  int enough_constant_memory = 0;
+#endif
 
   cl_kernel knl;
   if (enough_constant_memory) { // first try to fit in constant memory
@@ -305,7 +317,7 @@ int main(int argc, char **argv) {
     cl_ulong ev_start_time, ev_end_time;
 
     // allocate device memory
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
@@ -331,7 +343,7 @@ int main(int argc, char **argv) {
 
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
           size_inputs_coal / num_chunks, inputs_coal + chunksize * j, 0, NULL,
@@ -447,6 +459,27 @@ int main(int argc, char **argv) {
   free(inputs);
   free(results);
   free(exp_results);
+}
+
+void pad_test_case_number(cl_device_id *device, int *num_test_cases) {
+  // find out maximum dimensions for device
+  cl_int err;
+
+  cl_uint num_dims;
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
+                        sizeof(num_dims), &num_dims, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n",
+           err);
+
+  size_t dims[num_dims];
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims),
+                        dims, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+
+  int coef = *num_test_cases / dims[0];
+  *num_test_cases = (coef + 1) * dims[0];
 }
 
 void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],

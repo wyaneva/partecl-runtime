@@ -28,10 +28,6 @@
  * Used in kernel
  *****************************/
 
-#ifndef NUM_TRANSITIONS_KERNEL
-#define NUM_TRANSITIONS_KERNEL 5331
-#endif
-
 #ifndef OUTPUT_LENGTH_KERNEL
 #define OUTPUT_LENGTH_KERNEL 300
 #endif

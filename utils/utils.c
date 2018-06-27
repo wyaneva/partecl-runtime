@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 char *read_file(const char *filename) {
   FILE *f = fopen(filename, "r");
@@ -42,3 +43,10 @@ char *read_file(const char *filename) {
   return result;
 }
 
+char *concatenate_strings(char *str1, const char* str2) {
+
+  int length = strlen(str2);
+  sprintf(str1, "%s", str2);
+
+  return str1+length;
+}

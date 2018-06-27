@@ -23,7 +23,7 @@
 #define PARSED_ARGV 2
 #define PARSED_STDIN 3
 
-// read file
 char *read_file(const char *);
+char *concatenate_strings(char *, const char*);
 
 #endif

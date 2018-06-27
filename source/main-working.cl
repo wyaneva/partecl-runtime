@@ -56,7 +56,7 @@ short lookup_symbol(int num_transitions,
  * Returns the final state.
  */
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
 kernel void execute_fsm(global char *inputs,
                         global struct partecl_result *results,
                         FSM_ATTR_KNL struct transition *transitions,
@@ -78,7 +78,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
   int idx = get_global_id(0);
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
 #else
   struct partecl_input input_gen = inputs[idx];
 #endif
@@ -95,7 +95,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
 
   // input
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
   global char *input_ptr = &inputs[idx * input_length];
 #else
   char *input_ptr = input_gen.input_ptr;
@@ -123,7 +123,7 @@ private
       //return;
     }
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
     input_ptr += input_length * num_test_cases;
 #else
     input_ptr += input_length;

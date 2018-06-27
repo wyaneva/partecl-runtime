@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
   // depends on the name of the variable in side the input structure
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
   }
 
   // will fsm fit in constant or local memory?
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_CONST_MEM
   int enough_constant_memory =
       size_transitions > get_constant_mem_size(&device) ? 0 : 1;
 #else
@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
     cl_ulong ev_start_time, ev_end_time;
 
     // allocate device memory
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
 
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
           size_inputs_coal / num_chunks, inputs_coal + chunksize * j, 0, NULL,

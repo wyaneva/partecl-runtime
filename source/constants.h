@@ -6,28 +6,35 @@
  **********************************/
 
 /*
- * FSM_OPTIMISE toggles optimisations
+ * FSM_OPTIMISE_COAL toggles optimisations
  *  1. coalesced memory allocation
- *  2. constant memory storage
  */
-#ifndef FSM_OPTIMISE
-#define FSM_OPTIMISE 0
+#ifndef FSM_OPTIMISE_COAL
+#define FSM_OPTIMISE_COAL 0
 #endif
 
-#if FSM_OPTIMISE
+#if FSM_OPTIMISE_COAL
 #define TEST_INPUTS_ATTR global
 #else
 #define TEST_INPUTS_ATTR
 #endif
 
 /*
- * FSM_CONSTANT_MEMORY and FSM_LOCAL_MEMORY 
+ * FSM_OPTIMISE_COAL toggles optimisations
+ *  1. FSM storage in local memory
+ */
+#ifndef FSM_OPTIMISE_CONST_MEM
+#define FSM_OPTIMISE_CONST_MEM 1
+#endif
+
+/*
+ * FSM_CONSTANT_MEMORY and FSM_LOCAL_MEMORY
  * put the FSM in the corresponding memory spaces
  * when there is enough space
  */
 #ifndef FSM_CONSTANT_MEMORY
 #define FSM_CONSTANT_MEMORY 0
-#endif 
+#endif
 
 #ifndef FSM_LOCAL_MEMORY
 #define FSM_LOCAL_MEMORY 0
@@ -36,7 +43,7 @@
 #if FSM_CONSTANT_MEMORY
 #define FSM_ATTR constant
 #define FSM_ATTR_KNL constant
-#else 
+#else
 
 #if FSM_LOCAL_MEMORY
 #define FSM_ATTR local

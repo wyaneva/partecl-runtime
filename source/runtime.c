@@ -36,7 +36,7 @@
 // IMPORTANT: kernel options should be defined in Makefile, based on the
 // machine, on which we are compiling  otherwise, the kernel will not build
 #ifndef KERNEL_OPTIONS
-#define KERNEL_OPTIONS "NONE"
+#define KERNEL_OPTIONS ""
 #endif
 
 void pad_test_case_number(cl_device_id *, int *);
@@ -202,6 +202,14 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  // build the kernel options
+  char kernel_options[1000];
+  char* kernel_options_ptr = &kernel_options[0];
+  kernel_options_ptr = concatenate_strings(kernel_options_ptr, KERNEL_OPTIONS);
+  char ko_num_transitions[50];
+  sprintf(ko_num_transitions, " -DNUM_TRANSITIONS_KERNEL=%d", num_transitions);
+  kernel_options_ptr = concatenate_strings(kernel_options_ptr, ko_num_transitions);
+
   // will fsm fit in constant or local memory?
 #if FSM_OPTIMISE_CONST_MEM
   int enough_constant_memory =
@@ -212,7 +220,7 @@ int main(int argc, char **argv) {
 
   cl_kernel knl;
   if (enough_constant_memory) { // first try to fit in constant memory
-    char kernel_options[] = KERNEL_OPTIONS " -DFSM_CONSTANT_MEMORY=1";
+    kernel_options_ptr = concatenate_strings(kernel_options_ptr, " -DFSM_CONSTANT_MEMORY=1");
     knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
 
   } else { // try to fit into local memory
@@ -220,7 +228,7 @@ int main(int argc, char **argv) {
         size_transitions > get_local_mem_size(&device) ? 0 : 1;
 
     if (enough_local_memory) {
-      char kernel_options[] = KERNEL_OPTIONS " -DFSM_LOCAL_MEMORY=1";
+      kernel_options_ptr = concatenate_strings(kernel_options_ptr, " -DFSM_LOCAL_MEMORY=1");
       knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
 
     } else {

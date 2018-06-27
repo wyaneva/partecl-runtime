@@ -39,6 +39,7 @@
 #define KERNEL_OPTIONS "NONE"
 #endif
 
+void pad_test_case_number(cl_device_id *, int *);
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
 void read_expected_results(struct partecl_result *, int);
@@ -87,6 +88,8 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
 }
 
 int main(int argc, char **argv) {
+
+  // read command line options
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
@@ -98,25 +101,9 @@ int main(int argc, char **argv) {
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &filename) == FAIL)
-    return 0;
-
-  // check that the specified number of chunks divides the number of tests
-  // equally
-  if (num_test_cases % num_chunks != 0) {
-    printf("Please provide a number of chunks which divides the number of test "
-           "cases equally.\n");
+                   &filename) == FAIL) {
     return 0;
   }
-  int chunksize = num_test_cases / num_chunks;
-
-  // allocate CPU memory and generate test cases
-  struct partecl_input *inputs;
-  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input *)malloc(size_inputs);
-  struct partecl_result *results;
-  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(size_results);
 
   // create queue and context
   cl_context ctx;
@@ -129,6 +116,27 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_inputs, &ctx, &device);
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
+
+  // pad the test case number to nearest multiple of workgroup size
+  pad_test_case_number(&device, &num_test_cases);
+
+  // check that the specified number of chunks divides the number of tests
+  // equally
+  if (num_test_cases % num_chunks != 0) {
+    printf("Please provide a number of chunks which divides the padeed number "
+           "of test cases (%d) equally.\n",
+           num_test_cases);
+    return 0;
+  }
+  int chunksize = num_test_cases / num_chunks;
+
+  // allocate CPU memory and generate test cases
+  struct partecl_input *inputs;
+  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
+  inputs = (struct partecl_input *)malloc(size_inputs);
+  struct partecl_result *results;
+  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
+  results = (struct partecl_result *)malloc(size_results);
 
   // read the test cases
   if (read_test_cases(inputs, num_test_cases) == FAIL)
@@ -382,6 +390,27 @@ int main(int argc, char **argv) {
   free(inputs);
   free(results);
   free(exp_results);
+}
+
+void pad_test_case_number(cl_device_id *device, int *num_test_cases) {
+  // find out maximum dimensions for device
+  cl_int err;
+
+  cl_uint num_dims;
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
+                        sizeof(num_dims), &num_dims, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n",
+           err);
+
+  size_t dims[num_dims];
+  err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims),
+                        dims, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+
+  int coef = *num_test_cases / dims[0];
+  *num_test_cases = (coef + 1) * dims[0];
 }
 
 void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],

@@ -36,7 +36,7 @@ short lookup_symbol(int num_transitions, struct transition transitions[],
     }
   }
 
-  printf("No transitions \n");
+  printf("No transitions: state %d; input %s\n", current_state, input);
   return -1; // In case of no transition -1 is returned
 }
 

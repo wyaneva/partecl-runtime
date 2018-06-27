@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
       knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
 
     } else {
-      knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
+      knl = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
     }
   }
   free(knl_text);

@@ -14,7 +14,7 @@
 #endif
 
 #ifndef NUM_STATES
-#define NUM_STATES 43
+#define NUM_STATES 71
 #endif
 
 #ifndef MAX_NUM_TRANSITIONS_PER_STATE

@@ -207,11 +207,6 @@ int main(int argc, char **argv) {
     printf("Reading the FSM failed.");
     return -1;
   }
-  if (num_transitions != NUM_TRANSITIONS_KERNEL) {
-    printf("NUM_TRANSITIONS_KERNEL is %d and num_transitions is %d. Exiting!\n",
-           NUM_TRANSITIONS_KERNEL, num_transitions);
-    return -1;
-  }
 
   size_t size_transitions = sizeof(transition) * num_transitions;
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,

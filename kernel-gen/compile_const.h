@@ -6,20 +6,21 @@
  *****************************/
 
 #ifndef INPUT_LENGTH_FSM
-#define INPUT_LENGTH_FSM 2
+#define INPUT_LENGTH_FSM 8
 #endif
 
 #ifndef OUTPUT_LENGTH_FSM
-#define OUTPUT_LENGTH_FSM 2
+#define OUTPUT_LENGTH_FSM 8
 #endif
 
 #ifndef NUM_STATES
-#define NUM_STATES 71
+#define NUM_STATES 16
 #endif
 
 #ifndef MAX_NUM_TRANSITIONS_PER_STATE
-#define MAX_NUM_TRANSITIONS_PER_STATE 255
-//8 //255 - for ASCII
+#define MAX_NUM_TRANSITIONS_PER_STATE 128
+//2^(input_length)
+//256 - for ASCII
 #endif
 
 /********************************/

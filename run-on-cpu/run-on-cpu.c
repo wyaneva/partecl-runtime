@@ -107,8 +107,8 @@ int main(int argc, char **argv) {
       idx++;
     }
 
-    int prev = i > 0 ? i - 1 : 0;
-    offsets[i] = current_offset + num_transitions_per_state[prev];
+    int prev = i > 0 ? num_transitions_per_state[i - 1] : 0;
+    offsets[i] = current_offset + prev;
     current_offset = offsets[i];
   }
 

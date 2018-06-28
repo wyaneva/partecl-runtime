@@ -9,7 +9,7 @@
  * BMRK toggles special code for network and open source benchmarks
  */
 #ifndef BMRK_NETWORK
-#define BMRK_NETWORK 1
+#define BMRK_NETWORK 0
 #endif
 
 #if BMRK_NETWORK

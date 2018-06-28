@@ -1,7 +1,7 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
-#define PADDED_INPUT_ARRAY_SIZE 50
+#define PADDED_INPUT_ARRAY_SIZE 100
 
 typedef struct partecl_input
 {

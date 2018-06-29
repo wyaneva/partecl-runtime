@@ -13,7 +13,7 @@
 #endif
 
 #ifndef BMRK_NETWORK
-#define BMRK_NETWORK 0
+#define BMRK_NETWORK 1
 #endif
 
 #if BMRK_NETWORK

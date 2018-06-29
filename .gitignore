@@ -2,6 +2,11 @@
 #kernel-gen/*
 #cpu-gen/*
 cuda/kernel/*
+kernel-gen/tests.txt
+
+#fsm files
+build/*.fsm
+build/*.kiss2
 
 #objects & executables
 build/gpu-test

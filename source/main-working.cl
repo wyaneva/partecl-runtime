@@ -89,7 +89,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
   // output
 private
-  char output[OUTPUT_LENGTH_KERNEL];
+  char output[PADDED_INPUT_ARRAY_SIZE];
 private
   char *output_ptr = output;
 

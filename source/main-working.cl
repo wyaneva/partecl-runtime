@@ -16,40 +16,6 @@ int get_index(short current_state, char input) {
 }
 
 /**
- * Read the value of a parameter in the KISS2 file.
- * This refers to the .i, .o, .p and .s parameters
- */
-bool compare_inputs(TEST_INPUTS_ATTR char test_input[], char transition_input[],
-                    int length) {
-
-#if BMRK_OS
-  char anychar = '-'; // '-' denotes ANY bit in the KISS2 format
-#endif
-
-  for (int i = 0; i < length; i++) {
-    if (test_input[i] == '\0' || transition_input[i] == '\0') {
-      return false;
-    }
-
-#if BMRK_OS
-    if (test_input[i] == anychar || transition_input[i] == anychar) {
-      continue;
-    }
-#endif
-
-#if BMRK_NETWORK
-    if (test_input[i] == '\n') {
-      continue;
-    }
-#endif
-
-    if (test_input[i] != transition_input[i])
-      return false;
-  }
-  return true;
-}
-
-/**
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
@@ -57,8 +23,20 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
                     TEST_INPUTS_ATTR char input[], int length,
                     private char *output_ptr) {
 
+#if BMRK_NETWORK
+  if (input[0] == '\n') {
+    return current_state;
+  }
+#endif
+
   int index = get_index(current_state, input[0]);
   transition trans = transitions[index];
+
+  if (trans.next_state == -1) {
+    printf("\nCouldn't find transition for state %d, input %s.\n",
+           current_state, input);
+  }
+
   strcpy(output_ptr, trans.output);
   return trans.next_state;
 

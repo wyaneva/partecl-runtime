@@ -29,28 +29,24 @@ bool compare_inputs(char binary1[], char binary2[], int length) {
  * Looksup an FSM input symbol, given the symbol and the current state.
  * Returns the next state or -1 if transition isn't found.
  */
-short lookup_symbol(transition *transitions, int start, int end, short current_state, char input[],
+short lookup_symbol(transition *transitions, short current_state, char input[],
                     int length, char *output_ptr) {
 
-  for (int i = start; i < end; i++) {
-    transition trans = transitions[i];
-    if (compare_inputs(input, trans.input, length)) {
-      strcpy(output_ptr, trans.output);
-      return trans.next_state;
-    }
-  }
+  int idx = get_index(current_state, input[0]);
+  transition trans = transitions[idx];
+  strcpy(output_ptr, trans.output);
+  return trans.next_state;
 
-  /*printf("\nCouldn't find transition for state %d, input %s.\n", current_state,
-         input);*/
-  return -1;
+  //printf("\nCouldn't find transition for state %d, input %s.\n", current_state,
+  //       input);
+  //return -1;
 }
 
 /**
  * Executes the FSM.
  * Returns the final state.
  */
-void execute_fsm(transition *transitions, int offsets[],
-                 int num_transitions_per_state[], short starting_state, char *input_ptr,
+void execute_fsm(transition *transitions, short starting_state, char *input_ptr,
                  int input_length, int output_length) {
 
   // output
@@ -65,10 +61,8 @@ void execute_fsm(transition *transitions, int offsets[],
       return;
     }
 
-    int start = offsets[current_state];
-    int end = start + num_transitions_per_state[current_state];
-    current_state = lookup_symbol(transitions, start, end, current_state,
-                                  input_ptr, input_length, output_ptr);
+    current_state = lookup_symbol(transitions, current_state, input_ptr,
+                                  input_length, output_ptr);
 
     input_ptr += input_length;
     output_ptr += output_length;
@@ -105,40 +99,16 @@ __kernel void main_kernel(__global struct partecl_input* inputs, __global struct
   int starting_state;
   int input_length;
   int output_length;
-  int *num_transitions_per_state = (int *)malloc(sizeof(int) * NUM_STATES);
-  transition *transitions_unopt =
-      read_fsm(filename, num_transitions_per_state, &num_transitions, &starting_state,
-               &input_length, &output_length);
+  transition *transitions =
+      read_fsm(filename, &num_transitions, &starting_state, &input_length, &output_length);
 
-  if (transitions_unopt == NULL) {
+  if (transitions == NULL) {
     /*printf("Reading the FSM failed.");*/
     //return -1;
   }
 
-  transition *transitions =
-      (transition *)malloc(sizeof(transition) * num_transitions);
-  int offsets[NUM_STATES];
-
-  int idx = 0;
-  int current_offset = 0;
-  for (int i = 0; i < NUM_STATES; i++) {
-    for (int j = 0; j < MAX_NUM_TRANSITIONS_PER_STATE; j++) {
-      if (j >= num_transitions_per_state[i])
-        break;
-
-      transition current_trans = transitions_unopt[i * MAX_NUM_TRANSITIONS_PER_STATE + j];
-
-      transitions[idx] = current_trans;
-      idx++;
-    }
-
-    int prev = i > 0 ? i - 1 : 0;
-    offsets[i] = current_offset + num_transitions_per_state[prev];
-    current_offset = offsets[i];
-  }
-
-  execute_fsm(transitions, offsets, num_transitions_per_state, starting_state,
-              input_ptr, input_length, output_length);
+  execute_fsm(transitions, starting_state, input_ptr, input_length,
+              output_length);
   result_gen->final_state = current_state;
   for(int i = 0; i < length; i++)
   {

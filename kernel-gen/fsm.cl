@@ -180,8 +180,7 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
 /**
  * Read an FSM from a KISS2 file
  */
-transition *read_fsm(const char *filename, int *num_transitions_per_state,
-                     int *num_transitions, int *starting_state,
+transition *read_fsm(const char *filename, int *num_transitions, int *starting_state,
                      int *input_length, int *output_length) {
 
   // read the parameters
@@ -226,8 +225,9 @@ transition *read_fsm(const char *filename, int *num_transitions_per_state,
   transition *transitions = (transition *)malloc(
       sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE);
 
-  for(int i = 0; i < NUM_STATES; i++) {
-    num_transitions_per_state[i] = 0;
+  for(int i = 0; i < NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE; i++) {
+    transitions[i].next_state = -1;
+    transitions[i].output[0] = '\0';
   }
 
   transition transition;
@@ -249,7 +249,8 @@ transition *read_fsm(const char *filename, int *num_transitions_per_state,
     char *curtoken;
 
     // input
-    copy_word_static(transition.input, &lineptr);
+    char input[INPUT_LENGTH_FSM];
+    copy_word_static(input, &lineptr);
 
     // current state
     copy_word(&curtoken, &lineptr);
@@ -262,10 +263,8 @@ transition *read_fsm(const char *filename, int *num_transitions_per_state,
     // output
     copy_word_static(transition.output, &lineptr);
 
-    int idx = num_transitions_per_state[current_state];
-    transitions[current_state * MAX_NUM_TRANSITIONS_PER_STATE + idx] =
-        transition;
-    num_transitions_per_state[current_state]++;
+    int idx = get_index(current_state, input[0]);
+    transitions[idx] = transition;
 
     if(*starting_state == -1) {
       *starting_state = current_state;
@@ -273,4 +272,11 @@ transition *read_fsm(const char *filename, int *num_transitions_per_state,
   }
 
   return transitions;
+}
+
+int char_to_int(const char c) { return (unsigned char)c; }
+
+int get_index(short current_state, char input) {
+  int idx = char_to_int(input);
+  return current_state * MAX_NUM_TRANSITIONS_PER_STATE + idx;
 }

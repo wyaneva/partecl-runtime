@@ -18,7 +18,7 @@
 #endif
 
 #ifndef MAX_NUM_TRANSITIONS_PER_STATE
-#define MAX_NUM_TRANSITIONS_PER_STATE 255
+#define MAX_NUM_TRANSITIONS_PER_STATE 256
 //2^(input_length)
 //256 - for ASCII
 #endif

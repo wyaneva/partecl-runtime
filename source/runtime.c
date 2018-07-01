@@ -58,7 +58,6 @@ void setup_common_buffers(cl_context ctx, cl_kernel knl,
     printf("error: clCreateBuffer buf_transitions: %d\n", err);
 
   // transfer data to GPU
-  printf("CPU: %d\n", transitions[766].next_state);
   cl_event event_common_buffers;
   err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_TRUE, 0,
                              size_transitions, transitions, 0, NULL,
@@ -119,7 +118,7 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_results, &ctx, &device);
 
   // pad the test case number to nearest multiple of workgroup size
-  //pad_test_case_number(&device, &num_test_cases);
+  pad_test_case_number(&device, &num_test_cases);
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests

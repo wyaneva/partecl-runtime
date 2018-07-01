@@ -58,9 +58,7 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
                     private char *output_ptr) {
 
   int index = get_index(current_state, input[0]);
-  printf("%u %d %d\n", (unsigned char)input[0], current_state, index);
   transition trans = transitions[index];
-  printf("%d\n", trans.next_state);
   strcpy(output_ptr, trans.output);
   return trans.next_state;
 
@@ -84,7 +82,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #endif
-  printf("GPU: %d\n", transitions[766].next_state);
 
   int idx = get_global_id(0);
 
@@ -109,7 +106,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   global char *input_ptr = &inputs[idx * input_length];
 #else
   char *input_ptr = input_gen.input_ptr;
-
 #endif
   //keep this comment
 

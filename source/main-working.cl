@@ -63,7 +63,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
   int idx = get_global_id(0);
 
-
 #if FSM_OPTIMISE_COAL
 #else
   struct partecl_input input_gen = inputs[idx];
@@ -125,6 +124,3 @@ private
   result_gen->length = length;
   result_gen->final_state = current_state;
 }
-
-
-

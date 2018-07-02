@@ -386,9 +386,11 @@ int main(int argc, char **argv) {
           printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
                end_to_end);
         }
+        /*
         else {
           printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
         }
+        */
       }
     }
 

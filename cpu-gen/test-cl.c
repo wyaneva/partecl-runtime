@@ -43,10 +43,6 @@ void run_main(struct partecl_input input, struct partecl_result *result,
   char* output_ptr = result->output;
 
   // output
-  int length = strlen(input_ptr) / input_length * output_length;
-  //char output[length];
-  //char *output_ptr = output;
-
   short current_state = starting_state; // transitions[0].current_state;
   while (*input_ptr != '\0') {
 
@@ -61,15 +57,6 @@ void run_main(struct partecl_input input, struct partecl_result *result,
     output_ptr += output_length;
   }
 
-  // print the output
-  /*
-  for (int i = 0; i < length; i++) {
-    printf("%c", output[i]);
-  }
-  printf("\n");
-  printf("Final state: %ld\n", current_state);
-  */
-
+  int length = strlen(result->output);
   result->length=length;
-  //result->final_state = current_state;
 }

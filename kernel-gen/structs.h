@@ -1,12 +1,11 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
-#define PADDED_INPUT_ARRAY_SIZE 50
+#define PADDED_INPUT_ARRAY_SIZE 17
 
 typedef struct partecl_input
 {
   int test_case_num;
-  int argc;
   char input_ptr[PADDED_INPUT_ARRAY_SIZE];
 } partecl_input;
 

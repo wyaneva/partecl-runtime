@@ -6,7 +6,6 @@
 void populate_inputs(struct partecl_input *input, int argc, char** args, int stdinc, char** stdins)
 {
   input->test_case_num = atoi(args[0]);
-  input->argc = argc;
   if(argc >= 2)
   {
     char *input_ptr_ptr = args[1];

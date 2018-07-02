@@ -23,9 +23,20 @@
 #endif
 
 /*
+ * FSM_INPUTS_WITH_OFFSETS toggles dense input representation
+ */
+#ifndef FSM_INPUTS_WITH_OFFSETS
+#define FSM_INPUTS_WITH_OFFSETS 1
+#endif
+
+/*
  * FSM_OPTIMISE_COAL toggles optimisations
  *  1. coalesced memory allocation
+ *  It can ONLY be on when FSM_INPUTS_WITH_OFFSETS is NOT on
  */
+#if FSM_INPUTS_WITH_OFFSETS 
+#define TEST_INPUTS_ATTR global
+#else
 #ifndef FSM_OPTIMISE_COAL
 #define FSM_OPTIMISE_COAL 0
 #endif
@@ -36,9 +47,11 @@
 #define TEST_INPUTS_ATTR
 #endif
 
+#endif
+
 /*
- * FSM_OPTIMISE_COAL toggles optimisations
- *  1. FSM storage in local memory
+ * FSM_OPTIMISE_CONST toggles optimisations
+ *  1. FSM storage in constant & local memory where possible
  */
 #ifndef FSM_OPTIMISE_CONST_MEM
 #define FSM_OPTIMISE_CONST_MEM 1

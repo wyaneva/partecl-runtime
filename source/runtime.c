@@ -132,8 +132,37 @@ int main(int argc, char **argv) {
   size_t size_transitions = sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
+
+#if FSM_INPUTS_WITH_OFFSETS
+  // calculate how much space we need for the test case inputs
+  int total_number_of_inputs = 0;
+  for (int i = 0; i < num_test_cases; i++) {
+    total_number_of_inputs += strlen(inputs[i].input_ptr);
+  }
+
+  // allocate memory
+  size_t size_inputs_offset = sizeof(char) * total_number_of_inputs;
+  char *inputs_offset = (char *)malloc(size_inputs_offset);
+  char *results_offset = (char *)malloc(size_inputs_offset);
+  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
+
+  // move inputs into one big array
+  char *inputsptr = inputs_offset;
+  for (int i = 0; i < num_test_cases; i++) {
+    int length = strlen(inputs[i].input_ptr);
+    strcpy(inputsptr, inputs[i].input_ptr);
+    inputsptr += length;
+
+    // calculate offset
+    offsets[i] = i == 0 ? 0 : offsets[i - 1] + strlen(inputs[i - 1].input_ptr);
+  }
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_offset);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_inputs_offset);
+#else
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_results);
+#endif
+
 
 #if FSM_OPTIMISE_COAL
   // transpose inputs for coalesced reading on gpu
@@ -217,6 +246,12 @@ int main(int argc, char **argv) {
     cl_ulong ev_start_time, ev_end_time;
 
     // allocate device memory
+#if FSM_INPUTS_WITH_OFFSETS
+    cl_mem buf_inputs =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_inputs: %d\n", err);
+#else
 #if FSM_OPTIMISE_COAL
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
@@ -228,16 +263,45 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 #endif
+#endif
 
+#if FSM_INPUTS_WITH_OFFSETS
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
+#else
     cl_mem buf_results =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
+#endif
+
+#if FSM_INPUTS_WITH_OFFSETS
+    cl_mem buf_offsets =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_offsets: %d\n", err);
+#endif
 
     cl_mem buf_transitions =
         clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_transitions, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_transitions: %d\n", err);
+
+#if FSM_INPUTS_WITH_OFFSETS
+#define KNL_ARG_TRANSITIONS 3
+#define KNL_ARG_STARTING_STATE 4
+#define KNL_ARG_INPUT_LENGTH 5
+#define KNL_ARG_OUTPUT_LENGTH 6
+#define KNL_ARG_NUM_TEST_CASES 7
+#else
+#define KNL_ARG_TRANSITIONS 2
+#define KNL_ARG_STARTING_STATE 3
+#define KNL_ARG_INPUT_LENGTH 4
+#define KNL_ARG_OUTPUT_LENGTH 5
+#define KNL_ARG_NUM_TEST_CASES 6
+#endif
 
     // add kernel arguments
     err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
@@ -248,28 +312,35 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clSetKernelArg 1: %d\n", err);
 
-    err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_transitions);
+#if FSM_INPUTS_WITH_OFFSETS
+    err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_offsets);
     if (err != CL_SUCCESS)
       printf("error: clSetKernelArg 2: %d\n", err);
+#endif
 
-    err = clSetKernelArg(knl, 3, sizeof(int), &starting_state);
+    err = clSetKernelArg(knl, KNL_ARG_TRANSITIONS, sizeof(cl_mem), &buf_transitions);
     if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 3: %d\n", err);
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_TRANSITIONS, err);
 
-    err = clSetKernelArg(knl, 4, sizeof(int), &input_length);
+    err = clSetKernelArg(knl, KNL_ARG_STARTING_STATE, sizeof(int), &starting_state);
     if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 4: %d\n", err);
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_STARTING_STATE, err);
 
-    err = clSetKernelArg(knl, 5, sizeof(int), &output_length);
+    err = clSetKernelArg(knl, KNL_ARG_INPUT_LENGTH, sizeof(int), &input_length);
     if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 5: %d\n", err);
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_INPUT_LENGTH, err);
 
-    err = clSetKernelArg(knl, 6, sizeof(int), &num_test_cases);
+    err = clSetKernelArg(knl, KNL_ARG_OUTPUT_LENGTH, sizeof(int), &output_length);
     if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 6: %d\n", err);
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_OUTPUT_LENGTH, err);
+
+    err = clSetKernelArg(knl, KNL_ARG_NUM_TEST_CASES, sizeof(int), &num_test_cases);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 
     // declare events
     cl_event event_inputs[num_chunks];
+    cl_event event_offsets[num_chunks];
     cl_event event_kernel[num_chunks];
     cl_event event_results[num_chunks];
 
@@ -298,6 +369,22 @@ int main(int argc, char **argv) {
 
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
+#if FSM_INPUTS_WITH_OFFSETS
+      err = clEnqueueWriteBuffer(
+          queue_inputs, buf_offsets, CL_FALSE, sizeof(int) * chunksize * j,
+          sizeof(int) * num_test_cases / num_chunks, offsets + chunksize * j, 0,
+          NULL, &event_offsets[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+      err = clEnqueueWriteBuffer(
+          queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs_offset / num_chunks, inputs_offset + chunksize * j, 0,
+          &event_offsets[j], &event_inputs[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+#else
 #if FSM_OPTIMISE_COAL
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
@@ -314,6 +401,7 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
+#endif
 
       // launch kernel
       size_t goffset[3];
@@ -321,12 +409,19 @@ int main(int argc, char **argv) {
 
       err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim, ldim, 1,
                                    &event_inputs[j], &event_kernel[j]);
-      // err = clEnqueueNDRangeKernel(queue, knl, 1, NULL, gdim, ldim, 0, NULL,
-      // NULL);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
       // transfer results back
+#if FSM_INPUTS_WITH_OFFSETS
+      err = clEnqueueReadBuffer(
+          queue_results, buf_results, CL_FALSE,
+          sizeof(char) * chunksize * j, size_inputs_offset / num_chunks,
+          results_offset + chunksize * j, 1, &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+    }
+#else
       err = clEnqueueReadBuffer(
           queue_results, buf_results, CL_FALSE,
           sizeof(partecl_result) * chunksize * j, size_results / num_chunks,
@@ -334,6 +429,7 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
     }
+#endif
 
     // finish the kernels
     err = clFinish(queue_inputs);
@@ -392,6 +488,20 @@ int main(int argc, char **argv) {
         */
       }
     }
+
+#if FSM_INPUTS_WITH_OFFSETS
+    for (int i = 0; i < num_test_cases; i++) {
+      char *outputptr = results[i].output;
+      int start = offsets[i];
+      int end = i == num_test_cases - 1 ? strlen(results_offset) - offsets[i]
+                                        : offsets[i + 1] - offsets[i];
+      for (int j = start; j < end; j++) {
+        *outputptr = results_offset[j];
+        outputptr++;
+      }
+      *outputptr = '\0';
+    }
+#endif
 
     // check results
     if (do_compare_results)

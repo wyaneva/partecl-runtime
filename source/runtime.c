@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
   // clalculate dimensions
   size_t gdim[3], ldim[3]; // assuming three dimensions
   calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
-  printf("LDIM = %zd\n", ldim[0]);
+  printf("LDIM = %zd, chunks = %d\n", ldim[0], num_chunks);
 
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
@@ -379,12 +379,18 @@ int main(int argc, char **argv) {
       clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
       time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
-    }
 
-    end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
-    if (do_time)
-      printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
-             end_to_end);
+      if (do_time) {
+        if(j == num_chunks - 1) {
+          end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
+          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
+               end_to_end);
+        }
+        else {
+          printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
+        }
+      }
+    }
 
     // check results
     if (do_compare_results)

@@ -5,7 +5,6 @@
 
 void populate_inputs(struct partecl_input *input, int argc, char** args, int stdinc, char** stdins)
 {
-  input->test_case_num = atoi(args[0]);
   if(argc >= 2)
   {
     char *input_ptr_ptr = args[1];
@@ -27,16 +26,12 @@ void compare_results(struct partecl_result* results, struct partecl_result* exp_
   for(int i = 0; i < num_test_cases; i++)
   {
     struct partecl_result curres = results[i];
-printf("TC %d: ", curres.test_case_num);
-printf("%d \n", curres.final_state);
-    printf("TC %d: ", curres.test_case_num);
+    printf("TC %d: ", i+1);
     for(int k = 0; k < curres.length; k++)
     {
       char curel = curres.output[k];
       printf("%c ", curel);
     }
     printf("\n");
-printf("TC %d: ", curres.test_case_num);
-printf("%d \n", curres.length);
   }
 }

@@ -71,5 +71,5 @@ void run_main(struct partecl_input input, struct partecl_result *result,
   */
 
   result->length=length;
-  result->final_state = current_state;
+  //result->final_state = current_state;
 }

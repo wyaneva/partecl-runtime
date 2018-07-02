@@ -35,7 +35,6 @@ void run_on_cpu(struct partecl_input input, struct partecl_result *result,
                 transition *transitions, short starting_state, int input_length,
                 int output_length) {
 
-  result->test_case_num = input.test_case_num;
   run_main(input, result, transitions, starting_state, input_length,
            output_length);
 }

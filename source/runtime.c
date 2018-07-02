@@ -295,6 +295,19 @@ int main(int argc, char **argv) {
     cl_event event_kernel[num_chunks];
     cl_event event_results[num_chunks];
 
+    // flush the queues before timing
+    err = clFinish(queue_inputs);
+    if (err != CL_SUCCESS)
+      printf("error: clFinish queue_inputs: %d\n", err);
+
+    err = clFinish(queue_kernel);
+    if (err != CL_SUCCESS)
+      printf("error: clFinish queue_kernel: %d\n", err);
+
+    err = clFinish(queue_results);
+    if (err != CL_SUCCESS)
+      printf("error: clFinish queue_results: %d\n", err);
+
     get_timestamp(&ete_start);
 
     for (int j = 0; j < num_chunks; j++) {

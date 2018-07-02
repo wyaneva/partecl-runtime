@@ -69,7 +69,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
 
   global struct partecl_result *result_gen = &results[idx];
-  result_gen->test_case_num = idx + 1;
 
 #if FSM_LOCAL_MEMORY
   // copy FSM into local memory
@@ -122,5 +121,4 @@ private
     result_gen->output[i] = output[i];
   }
   result_gen->length = length;
-  result_gen->final_state = current_state;
 }

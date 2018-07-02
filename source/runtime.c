@@ -175,6 +175,8 @@ int main(int argc, char **argv) {
   size_t size_transitions = sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_results);
 
 #if FSM_OPTIMISE_COAL
   // transpose inputs for coalesced reading on gpu
@@ -279,6 +281,15 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer: %d\n", err);
 
+    // add kernel arguments
+    err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg 0: %d\n", err);
+
+    err = clSetKernelArg(knl, 1, sizeof(cl_mem), &buf_results);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg 1: %d\n", err);
+
     // declare events
     cl_event event_inputs[num_chunks];
     cl_event event_kernel[num_chunks];
@@ -304,15 +315,6 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
-
-      // add kernel arguments
-      err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
-      if (err != CL_SUCCESS)
-        printf("error: clSetKernelArg 0: %d\n", err);
-
-      err = clSetKernelArg(knl, 1, sizeof(cl_mem), &buf_results);
-      if (err != CL_SUCCESS)
-        printf("error: clSetKernelArg 1: %d\n", err);
 
       // launch kernel
       size_t goffset[3];

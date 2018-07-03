@@ -82,7 +82,8 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #else
 
 #if FSM_INPUTS_COAL_CHAR
-  global char *input_ptr = &inputs[idx * input_length];
+  int coal_idx = idx * input_length;
+  global char *input_ptr = &inputs[coal_idx];
 #else
   struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;

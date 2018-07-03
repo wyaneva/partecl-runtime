@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
   }
 
   // allocate memory
-  size_t size_inputs_offset = sizeof(char) * total_number_of_inputs;
+  size_t size_inputs_offset = sizeof(char) * (total_number_of_inputs + 1);
   char *inputs_offset = (char *)malloc(size_inputs_offset);
   char *results_offset = (char *)malloc(size_inputs_offset);
   int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
@@ -156,6 +156,7 @@ int main(int argc, char **argv) {
     // calculate offset
     offsets[i] = i == 0 ? 0 : offsets[i - 1] + strlen(inputs[i - 1].input_ptr);
   }
+  *inputsptr = '\0';
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_offset);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_inputs_offset);
 #else

@@ -18,6 +18,7 @@
 #include "../utils/read-test-cases.h"
 #include "../utils/timing.h"
 #include "../utils/utils.h"
+#include "../utils/fsm-utils.h"
 #include "cl-utils.h"
 #include <ctype.h>
 #include <errno.h>
@@ -134,30 +135,20 @@ int main(int argc, char **argv) {
          size_transitions);
 
 #if FSM_INPUTS_WITH_OFFSETS
-  // calculate how much space we need for the test case inputs
-  int total_number_of_inputs = 0;
-  for (int i = 0; i < num_test_cases; i++) {
-    total_number_of_inputs += strlen(inputs[i].input_ptr) + 1;
-  }
+  // calculate sizes
+  int total_number_of_inputs;
+  size_t size_inputs_offset;
+  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset, inputs, num_test_cases);
 
   // allocate memory
-  size_t size_inputs_offset = sizeof(char) * (total_number_of_inputs);
   char *inputs_offset = (char *)malloc(size_inputs_offset);
   char *results_offset = (char *)malloc(size_inputs_offset);
   int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
 
-  // move inputs into one big array
-  char *inputsptr = inputs_offset;
-  for (int i = 0; i < num_test_cases; i++) {
-    int length = strlen(inputs[i].input_ptr);
-    strcpy(inputsptr, inputs[i].input_ptr);
-    inputsptr += length;
-    *inputsptr = '\0';
-    inputsptr++;
+  // copy data
+  partecl_input_to_input_with_offsets(inputs, inputs_offset, offsets,
+                                      num_test_cases);
 
-    // calculate offset
-    offsets[i] = i == 0 ? 0 : offsets[i - 1] + strlen(inputs[i - 1].input_ptr) + 1;
-  }
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_offset);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_inputs_offset);
 #else
@@ -492,18 +483,7 @@ int main(int argc, char **argv) {
     }
 
 #if FSM_INPUTS_WITH_OFFSETS
-    for (int i = 0; i < num_test_cases; i++) {
-      char *outputptr = &results[i].output[0];
-      int start = offsets[i];
-      int end = i == num_test_cases - 1 ? start + total_number_of_inputs - offsets[i]
-                                        : start + offsets[i + 1] - offsets[i];
-      for (int j = start; j < end; j++) {
-        *outputptr = results_offset[j];
-        outputptr++;
-      }
-      *outputptr = '\0';
-      results[i].length = end - start;
-    }
+    results_with_offsets_to_partecl_results(results_offset, results, total_number_of_inputs, offsets, num_test_cases);
 #endif
 
     // check results

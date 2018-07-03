@@ -84,7 +84,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // input
 #if FSM_INPUTS_WITH_OFFSETS
   int offset = offsets[idx];
-  int test_case_length = idx == num_test_cases - 1 ? strlen_global(inputs) - offset : offsets[idx+1] - offset;
   global char *input_ptr = &inputs[offset];
 #else
 
@@ -107,13 +106,7 @@ private
   short current_state = starting_state;
 
   // execute
-#if FSM_INPUTS_WITH_OFFSETS
-  int counter = 0;
-  while (counter < test_case_length) {
-    counter++;
-#else
   while (*input_ptr != '\0') {
-#endif
 
     if (current_state == -1) {
       //return;

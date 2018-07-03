@@ -82,10 +82,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
 
   // input
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR
-  struct partecl_input input_gen = inputs[idx];
-#endif
-
 #if FSM_INPUTS_WITH_OFFSETS
   int offset = offsets[idx];
   int test_case_length = idx == num_test_cases - 1 ? strlen_global(inputs) - offset : offsets[idx+1] - offset;
@@ -95,6 +91,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #if FSM_INPUTS_COAL_CHAR
   global char *input_ptr = &inputs[idx * input_length];
 #else
+  struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;
 #endif
 
@@ -154,4 +151,8 @@ private
   result_gen->length = length;
 #endif
 }
+
+
+
+
 

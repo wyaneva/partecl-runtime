@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
 #endif
 
 
-#if FSM_OPTIMISE_COAL
+#if FSM_INPUTS_COAL_CHAR
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
   // depends on the name of the variable in side the input structure
@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 #else
-#if FSM_OPTIMISE_COAL
+#if FSM_INPUTS_COAL_CHAR
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
@@ -379,13 +379,13 @@ int main(int argc, char **argv) {
 
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
-          size_inputs_offset / num_chunks, inputs_offset + chunksize * j, 0,
+          size_inputs_offset / num_chunks, inputs_offset + chunksize * j, 1,
           &event_offsets[j], &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
 #else
-#if FSM_OPTIMISE_COAL
+#if FSM_INPUTS_COAL_CHAR
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
           size_inputs_coal / num_chunks, inputs_coal + chunksize * j, 0, NULL,

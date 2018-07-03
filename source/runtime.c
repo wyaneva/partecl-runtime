@@ -492,15 +492,16 @@ int main(int argc, char **argv) {
 
 #if FSM_INPUTS_WITH_OFFSETS
     for (int i = 0; i < num_test_cases; i++) {
-      char *outputptr = results[i].output;
+      char *outputptr = &results[i].output[0];
       int start = offsets[i];
-      int end = i == num_test_cases - 1 ? strlen(results_offset) - offsets[i]
-                                        : offsets[i + 1] - offsets[i];
+      int end = i == num_test_cases - 1 ? start + total_number_of_inputs - offsets[i]
+                                        : start + offsets[i + 1] - offsets[i];
       for (int j = start; j < end; j++) {
         *outputptr = results_offset[j];
         outputptr++;
       }
       *outputptr = '\0';
+      results[i].length = end - start;
     }
 #endif
 

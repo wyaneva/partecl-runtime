@@ -141,7 +141,7 @@ private
 
 #if FSM_INPUTS_WITH_OFFSETS
   for (int i = 0; i < length; i++) {
-    results[offset+i] = output[i];
+    results[offset + i] = output[i];
   }
 #else
   global struct partecl_result *result_gen = &results[idx];

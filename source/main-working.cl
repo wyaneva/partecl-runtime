@@ -49,7 +49,7 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
-#if FSM_INPUTS_COAL_CHAR
+#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global char *inputs,
                         global struct partecl_result *results,
                         FSM_ATTR_KNL transition *transitions,
@@ -81,13 +81,15 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   global char *input_ptr = &inputs[offset];
 #else
 
-#if FSM_INPUTS_COAL_CHAR
+#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
   int coal_idx = idx * input_length;
   global char *input_ptr = &inputs[coal_idx];
 #else
   struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;
 #endif
+
+printf("%s\n", input_ptr);
 
 #endif
   //keep this comment
@@ -115,7 +117,7 @@ private
                                   input_length, output_ptr);
 #endif
 
-#if FSM_INPUTS_COAL_CHAR
+#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
     input_ptr += input_length * num_test_cases;
 #else
     input_ptr += input_length;

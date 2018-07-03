@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_results, &ctx, &device);
 
   // pad the test case number to nearest multiple of workgroup size
-  pad_test_case_number(&device, &num_test_cases);
+  //pad_test_case_number(&device, &num_test_cases);
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests
@@ -156,7 +156,6 @@ int main(int argc, char **argv) {
   printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_results);
 #endif
 
-
 #if FSM_INPUTS_COAL_CHAR
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
@@ -182,6 +181,26 @@ int main(int argc, char **argv) {
   }
 #endif
 
+#if FSM_INPUTS_COAL_CHAR4
+  size_t size_inputs_coal_char4 =
+      sizeof(int) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
+  int *inputs_coal_char4 = (int *)malloc(size_inputs_coal_char4);
+  int max_num_inputs =
+      PADDED_INPUT_ARRAY_SIZE /
+      input_length; // this is the maximum number of inputs per test case
+  for (int i = 0; i < max_num_inputs; i++) { // which input inside the test case
+    for (int j = 0; j < num_test_cases; j++) { // which test case
+      struct partecl_input current_input = inputs[j];
+      for (int k = 0; k < input_length; k++) {
+        size_t idx = (i * num_test_cases + j) * input_length + k;
+        int current_symbol =
+            (unsigned char)current_input.input_ptr[i * input_length + k];
+        inputs_coal_char4[idx] = current_symbol;
+      }
+    }
+  }
+#endif
+
   // create kernel
   char *knl_text = read_file(GPU_SOURCE);
   if (!knl_text) {
@@ -191,7 +210,7 @@ int main(int argc, char **argv) {
 
   // build the kernel options
   char kernel_options[1000];
-  char* kernel_options_ptr = &kernel_options[0];
+  char *kernel_options_ptr = &kernel_options[0];
   kernel_options_ptr = concatenate_strings(kernel_options_ptr, KERNEL_OPTIONS);
   char ko_num_transitions[50];
   sprintf(ko_num_transitions, " -DNUM_TRANSITIONS_KERNEL=%d", num_transitions);
@@ -251,10 +270,17 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 #else
+#if FSM_INPUTS_COAL_CHAR4
+    cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
+                                       size_inputs_coal_char4, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_inputs: %d\n", err);
+#else
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
+#endif
 #endif
 #endif
 
@@ -386,13 +412,21 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
-      err =
-          clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
-                               sizeof(partecl_input) * chunksize * j,
-                               size_inputs / num_chunks, inputs + chunksize * j,
-                               0, NULL, &event_inputs[j]);
+#if FSM_INPUTS_COAL_CHAR4
+      err = clEnqueueWriteBuffer(
+          queue_inputs, buf_inputs, CL_FALSE, sizeof(int) * chunksize * j,
+          size_inputs_coal_char4 / num_chunks,
+          inputs_coal_char4 + chunksize * j, 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#else
+      err = clEnqueueWriteBuffer(
+          queue_inputs, buf_inputs, CL_FALSE,
+          sizeof(partecl_input) * chunksize * j, size_inputs / num_chunks,
+          inputs + chunksize * j, 0, NULL, &event_inputs[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#endif
 #endif
 #endif
 

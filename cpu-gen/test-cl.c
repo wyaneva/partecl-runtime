@@ -35,12 +35,23 @@ short lookup_symbol(transition *transitions, short current_state, char input[],
  * Executes the FSM.
  * Returns the final state.
  */
+
+#if FSM_INPUTS_WITH_OFFSETS
+void run_main(char *input, char *result, transition *transitions,
+              short starting_state, int input_length, int output_length) {
+#else
 void run_main(struct partecl_input input, struct partecl_result *result,
               transition *transitions, short starting_state, int input_length,
               int output_length) {
+#endif
 
+#if FSM_INPUTS_WITH_OFFSETS
+  char *input_ptr = &input[0];
+  char *output_ptr = &result[0];
+#else
   char *input_ptr = input.input_ptr;
-  char* output_ptr = result->output;
+  char *output_ptr = result->output;
+#endif
 
   // output
   short current_state = starting_state; // transitions[0].current_state;
@@ -57,6 +68,8 @@ void run_main(struct partecl_input input, struct partecl_result *result,
     output_ptr += output_length;
   }
 
+#if !FSM_INPUTS_WITH_OFFSETS
   int length = strlen(result->output);
-  result->length=length;
+  result->length = length;
+#endif
 }

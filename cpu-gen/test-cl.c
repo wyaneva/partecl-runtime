@@ -13,12 +13,6 @@
 short lookup_symbol(transition *transitions, short current_state, char input[],
                     int length, char *output_ptr) {
 
-#if BMRK_NETWORK
-  if (input[0] == '\n') {
-    return current_state;
-  }
-#endif
-
   int idx = get_index(current_state, input[0]);
   transition trans = transitions[idx];
 

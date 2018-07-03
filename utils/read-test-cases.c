@@ -93,7 +93,7 @@ void copyToken(char **token, char **bptr) {
     if (*cptr == '\\') {
       cptr++;
       if (*cptr == 'a' || *cptr == 'b' || *cptr == 't' || *cptr == 'n' ||
-          *cptr == 'v' || *cptr == 'f' || *cptr == 'r') {
+          *cptr == 'v' || *cptr == 'f' || *cptr == 'r' || *cptr == '\\') {
         switch (*cptr) {
         case 'a':
           (*token)[char_position] = (char)(7); // ascii value correspinding to
@@ -116,6 +116,9 @@ void copyToken(char **token, char **bptr) {
           break;
         case 'r':
           (*token)[char_position] = (char)(13);
+          break;
+        case '\\':
+          (*token)[char_position] = (char)(92);
           break;
         }
         char_position++;

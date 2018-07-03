@@ -23,12 +23,6 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
                     TEST_INPUTS_ATTR char input[], int length,
                     private char *output_ptr) {
 
-#if BMRK_NETWORK
-  if (input[0] == '\n') {
-    return current_state;
-  }
-#endif
-
   int index = get_index(current_state, input[0]);
   transition trans = transitions[index];
 

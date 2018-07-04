@@ -41,9 +41,9 @@
 #define KERNEL_OPTIONS ""
 #endif
 
-void pad_test_case_number(cl_device_id *, int *);
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
+void pad_test_case_number(cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv) {
@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
+  int sort_test_cases = SORT_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
@@ -77,7 +78,7 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_results, &ctx, &device);
 
   // pad the test case number to nearest multiple of workgroup size
-  pad_test_case_number(&device, &num_test_cases);
+  //pad_test_case_number(&device, &num_test_cases);
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests
@@ -102,6 +103,10 @@ int main(int argc, char **argv) {
   if (read_test_cases(inputs, num_test_cases) == FAIL)
     return 0;
 
+  // sort test cases
+  if (sort_test_cases_by_length(inputs, num_test_cases) == SUCCESS)
+    printf("YAYYY!\n");
+  
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
                                                 num_test_cases);
@@ -623,4 +628,3 @@ void calculate_global_offset(size_t goffset[3], int chunksize, int j) {
 void read_expected_results(struct partecl_result *results, int num_test_cases) {
   // TODO:
 }
-

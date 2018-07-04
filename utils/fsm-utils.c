@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../kernel-gen/structs.h"
+#include "../utils/utils.h"
 
 void calculate_sizes_with_offset(int *total_number_of_inputs,
                                  size_t *size_inputs_offset,
@@ -51,5 +52,72 @@ void results_with_offsets_to_partecl_results(const char *results_offset,
     }
     *outputptr = '\0';
     results[i].length = end - start - 1;
+  }
+}
+
+static int test_case_length(struct partecl_input input) {
+  return strlen(input.input_ptr);
+}
+
+static int max(struct partecl_input x, struct partecl_input y) {
+  int xl = test_case_length(x);
+  int yl = test_case_length(y);
+
+  if (xl > yl) {
+    return xl;
+  } else {
+    return yl;
+  }
+}
+
+static void merge_helper(struct partecl_input *inputs, int left, int right,
+                         struct partecl_input *temp) {
+  /* base case: one element */
+  if (right == left + 1) {
+    return;
+  } else {
+    int i = 0;
+    int length = right - left;
+    int midpoint_distance = length / 2;
+    /* l and r are to the positions in the left and right subarrays */
+    int l = left, r = left + midpoint_distance;
+
+    /* sort each subarray */
+    merge_helper(inputs, left, left + midpoint_distance, temp);
+    merge_helper(inputs, left + midpoint_distance, right, temp);
+
+    /* merge the arrays together using scratch for temporary storage */
+    for (i = 0; i < length; i++) {
+      /* Check to see if any elements remain in the left array; if so,
+       * we check if there are any elements left in the right array; if
+       * so, we compare them.  Otherwise, we know that the merge must
+       * use take the element from the left array */
+      if (l < left + midpoint_distance &&
+          (r == right ||
+           max(inputs[l], inputs[r]) == test_case_length(inputs[l]))) {
+        temp[i] = inputs[l];
+        l++;
+      } else {
+        temp[i] = inputs[r];
+        r++;
+      }
+    }
+    /* Copy the sorted subarray back to the input */
+    for (i = left; i < right; i++) {
+      inputs[i] = temp[i - left];
+    }
+  }
+}
+
+int sort_test_cases_by_length(struct partecl_input *inputs,
+                              int num_test_cases) {
+  struct partecl_input *temp = (struct partecl_input *)malloc(
+      sizeof(struct partecl_input) * num_test_cases);
+  if (temp != NULL) {
+    merge_helper(inputs, 0, num_test_cases, temp);
+    free(temp);
+    return SUCCESS;
+  } else {
+    return FAIL;
   }
 }

@@ -24,6 +24,7 @@
 #define DO_CHOOSE_DEVICE 0
 #define NUM_CHUNKS 1
 #define LDIM 0
+#define SORT_TEST_CASES 0
 
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,

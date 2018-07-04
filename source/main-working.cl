@@ -30,7 +30,8 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
            current_state, input);
   }
 
-  strcpy_global(output_ptr, trans.output);
+  *output_ptr = *(trans.output);
+  //strcpy_global(output_ptr, trans.output);
   return trans.next_state;
 }
 
@@ -139,11 +140,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
     input_ptr += input_length;
 #endif
   }
-
-#if FSM_INPUTS_COAL_CHAR
-  printf("%s\n", inputs);
-  printf("%s\n", results);
-#endif
 
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR && !FSM_INPUTS_COAL_CHAR4
   // results

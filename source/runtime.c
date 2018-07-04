@@ -561,8 +561,6 @@ int main(int argc, char **argv) {
         *outputptr = results_coal[j];
         outputptr++;
       }
-      printf("%s\n", results_coal);
-      printf("%s\n", results[i].output);
       results[i].length = strlen(results[i].output);
     }
 #endif

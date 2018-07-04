@@ -461,9 +461,9 @@ int main(int argc, char **argv) {
       // transfer results back
 #if FSM_INPUTS_WITH_OFFSETS
       err = clEnqueueReadBuffer(
-          queue_results, buf_results, CL_FALSE,
-          sizeof(char) * chunksize * j, size_inputs_offset / num_chunks,
-          results_offset + chunksize * j, 1, &event_kernel[j], &event_results[j]);
+          queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs_offset / num_chunks, results_offset + chunksize * j, 1,
+          &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
@@ -476,6 +476,15 @@ int main(int argc, char **argv) {
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
+      // TODO
+#else
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+                                sizeof(struct partecl_result) * chunksize * j,
+                                size_results / num_chunks,
+                                results + chunksize * j, 1, &event_kernel[j],
+                                &event_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #endif
 #endif
 #endif

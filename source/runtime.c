@@ -184,8 +184,9 @@ int main(int argc, char **argv) {
 
 #if FSM_INPUTS_COAL_CHAR4
   // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
+  int padded_size = PADDED_INPUT_ARRAY_SIZE + CHAR_N - PADDED_INPUT_ARRAY_SIZE % CHAR_N;
   size_t size_inputs_coal_char4 =
-      sizeof(cl_char4) * PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N;
+      sizeof(cl_char4) * padded_size * num_test_cases / CHAR_N;
   cl_char4 *inputs_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
   int max_num_inputs =
       PADDED_INPUT_ARRAY_SIZE /
@@ -201,7 +202,6 @@ int main(int argc, char **argv) {
       }
     }
   }
-
 #endif
 
   // create kernel

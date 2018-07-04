@@ -1,6 +1,55 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "../kernel-gen/structs.h"
+#include "../source/constants.h"
+
+void print_sanity_checks() {
+  printf("SANITY CHECK!");
+  printf("\n");
+#if FSM_INPUTS_WITH_OFFSETS
+  printf("FSM_INPUTS_WITH_OFFSETS = %d\n", FSM_INPUTS_WITH_OFFSETS);
+#else
+#if !FSM_INPUTS_WITH_OFFSETS
+  printf("FSM_INPUTS_WITH_OFFSETS = %d\n", FSM_INPUTS_WITH_OFFSETS);
+#else
+  printf("ERROR! FSM_INPUTS_WITH_OFFSETS not set.\n");
+#endif
+#endif
+
+#if FSM_INPUTS_COAL_CHAR
+  printf("FSM_INPUTS_COAL_CHAR = %d\n", FSM_INPUTS_COAL_CHAR);
+#else
+#if !FSM_INPUTS_COAL_CHAR
+  printf("FSM_INPUTS_COAL_CHAR = %d\n", FSM_INPUTS_COAL_CHAR);
+#else
+  printf("ERROR! FSM_INPUTS_COAL_CHAR not set.\n");
+#endif
+#endif
+
+#if FSM_INPUTS_COAL_CHAR4
+  printf("FSM_INPUTS_COAL_CHAR4 = %d\n", FSM_INPUTS_COAL_CHAR4);
+#else
+#if !FSM_INPUTS_COAL_CHAR4
+  printf("FSM_INPUTS_COAL_CHAR4 = %d\n", FSM_INPUTS_COAL_CHAR4);
+#else
+  printf("ERROR! FSM_INPUTS_COAL_CHAR4 not set.\n");
+#endif
+#endif
+
+#if FSM_INPUTS_COAL_CHAR && FSM_INPUTS_COAL_CHAR4
+  printf("ERROR! FSM_INPUTS_COAL_CHAR and FSM_INPUTS_COAL_CHAR4 cannot both be set.\n");
+#endif
+
+#if FSM_INPUTS_WITH_OFFSETS && FSM_INPUTS_COAL_CHAR
+  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR cannot both be set.\n");
+#endif
+
+#if FSM_INPUTS_WITH_OFFSETS && FSM_INPUTS_COAL_CHAR4
+  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR4 cannot both be set.\n");
+#endif
+  printf("\n");
+}
 
 void calculate_sizes_with_offset(int *total_number_of_inputs,
                                  size_t *size_inputs_offset,

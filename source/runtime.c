@@ -48,6 +48,8 @@ void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv) {
 
+  print_sanity_checks();
+
   // read command line options
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
@@ -560,8 +562,8 @@ int main(int argc, char **argv) {
   free(inputs_coal_char4);
 #endif
 #if FSM_INPUTS_WITH_OFFSETS
-  free(inputs_offsets);
-  free(results_offsets);
+  free(inputs_offset);
+  free(results_offset);
   free(offsets);
 #endif
 }

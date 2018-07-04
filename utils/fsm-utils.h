@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 
+void print_sanity_checks();
 void calculate_sizes_with_offset(int *total_number_of_inputs,
                                  size_t *size_inputs_offset,
                                  const struct partecl_input *inputs,

@@ -53,6 +53,9 @@ void run_on_cpu(struct partecl_input input, struct partecl_result *result,
 #endif
 
 int main(int argc, char **argv) {
+
+  print_sanity_checks();
+
   int do_print_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;

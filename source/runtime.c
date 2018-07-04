@@ -209,6 +209,11 @@ int main(int argc, char **argv) {
       }
     }
   }
+  cl_char4 *results_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_coal_char4);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_coal_char4);
 #else
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
@@ -301,6 +306,11 @@ int main(int argc, char **argv) {
                                        size_inputs_coal_char4, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal_char4, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
@@ -458,7 +468,7 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
-      // transfer results back
+        // transfer results back
 #if FSM_INPUTS_WITH_OFFSETS
       err = clEnqueueReadBuffer(
           queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
@@ -476,7 +486,13 @@ int main(int argc, char **argv) {
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
-      // TODO
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+                                sizeof(cl_char4) * chunksize * j,
+                                size_inputs_coal_char4 / num_chunks,
+                                results_coal_char4 + chunksize * j, 1,
+                                &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
                                 sizeof(struct partecl_result) * chunksize * j,
@@ -574,6 +590,16 @@ int main(int argc, char **argv) {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
+    for (int i = 0; i < num_test_cases; i++) {
+      char *outputptr = results[i].output;
+      for (int j = i; j < padded_size * num_test_cases; j += num_test_cases) {
+        for (int k = 0; k < CHAR_N; k++) {
+          *outputptr = results_coal_char4[j].s[0];
+          outputptr++;
+        }
+      }
+      results[i].length = strlen(results[i].output);
+    }
 #endif
 
     // check results

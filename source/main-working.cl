@@ -63,15 +63,6 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
 
   int idx = get_global_id(0);
-  if (idx == 0) {
-    for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N; j++) {
-      printf("%c ", inputs[j].x);
-      printf("%c ", inputs[j].y);
-      printf("%c ", inputs[j].z);
-      printf("%c ", inputs[j].w);
-      printf("\n");
-    }
-  }
 
   // FSM
 #if FSM_LOCAL_MEMORY
@@ -89,7 +80,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #else
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-  int coal_idx = idx * input_length;
+  int coal_idx = idx; //* input_length;
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
 #else
   struct partecl_input input_gen = inputs[idx];
@@ -161,7 +152,6 @@ private
   result_gen->length = length;
 #endif
 }
-
 
 
 

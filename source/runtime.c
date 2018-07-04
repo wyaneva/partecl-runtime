@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_results, &ctx, &device);
 
   // pad the test case number to nearest multiple of workgroup size
-  //pad_test_case_number(&device, &num_test_cases);
+  pad_test_case_number(&device, &num_test_cases);
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests
@@ -183,6 +183,7 @@ int main(int argc, char **argv) {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
+  // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
   size_t size_inputs_coal_char4 =
       sizeof(cl_char4) * PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N;
   cl_char4 *inputs_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
@@ -198,24 +199,9 @@ int main(int argc, char **argv) {
         char current_symbol = current_input.input_ptr[i + k];
         inputs_coal_char4[idx].s[k] = current_symbol;
       }
-
-      //      for (int k = 0; k < input_length; k++) {
-      //        size_t idx = (i * num_test_cases + j) * input_length + k;
-      //        int current_symbol =
-      //            (unsigned char)current_input.input_ptr[i * input_length +
-      //            k];
-      //        inputs_coal_char4[idx] = current_symbol;
-      //      }
     }
   }
 
-  for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N; j++) {
-    printf("%c ", inputs_coal_char4[j].s[0]);
-    printf("%c ", inputs_coal_char4[j].s[1]);
-    printf("%c ", inputs_coal_char4[j].s[2]);
-    printf("%c ", inputs_coal_char4[j].s[3]);
-    printf("\n");
-  }
 #endif
 
   // create kernel

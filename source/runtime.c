@@ -485,6 +485,16 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clReleaseMemObjec: %d\n", err);
 
+    err = clReleaseMemObject(buf_transitions);
+    if (err != CL_SUCCESS)
+      printf("error: clReleaseMemObjec: %d\n", err);
+
+#if FSM_INPUTS_WITH_OFFSETS
+    err = clReleaseMemObject(buf_offsets);
+    if (err != CL_SUCCESS)
+      printf("error: clReleaseMemObjec: %d\n", err);
+#endif
+
     // gather performance data
     for (int j = 0; j < num_chunks; j++) {
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
@@ -543,6 +553,17 @@ int main(int argc, char **argv) {
   free(inputs);
   free(results);
   free(exp_results);
+#if FSM_INPUTS_COAL_CHAR
+  free(inputs_coal);
+#endif
+#if FSM_INPUTS_COAL_CHAR4
+  free(inputs_coal_char4);
+#endif
+#if FSM_INPUTS_WITH_OFFSETS
+  free(inputs_offsets);
+  free(results_offsets);
+  free(offsets);
+#endif
 }
 
 void pad_test_case_number(cl_device_id *device, int *num_test_cases) {

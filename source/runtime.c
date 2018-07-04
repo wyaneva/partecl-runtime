@@ -466,7 +466,6 @@ int main(int argc, char **argv) {
           results_offset + chunksize * j, 1, &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-    }
 #else
 #if FSM_INPUTS_COAL_CHAR
       err = clEnqueueReadBuffer(
@@ -475,12 +474,12 @@ int main(int argc, char **argv) {
           &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-    }
 #else
 #if FSM_INPUTS_COAL_CHAR4
 #endif
 #endif
 #endif
+    }
 
     // finish the kernels
     err = clFinish(queue_inputs);

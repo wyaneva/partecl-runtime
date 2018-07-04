@@ -20,7 +20,7 @@ int get_index(short current_state, char input) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
-                    char input, int length, private char *output_ptr) {
+                    char input, int length, global char *output_ptr) {
 
   int index = get_index(current_state, input);
   transition trans = transitions[index];
@@ -30,7 +30,7 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
            current_state, input);
   }
 
-  strcpy(output_ptr, trans.output);
+  strcpy_global(output_ptr, trans.output);
   return trans.next_state;
 }
 
@@ -77,28 +77,28 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #if FSM_INPUTS_WITH_OFFSETS
   int offset = offsets[idx];
   global char *input_ptr = &inputs[offset];
+  global char *output_ptr = &results[offset];
 #else
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-  int coal_idx = idx; //* input_length;
+  int coal_idx = idx;
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
+
+  global struct partecl_result *result_gen = &results[idx];
+  global char *output_ptr = result_gen->output;
 #else
   struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;
+
+  global struct partecl_result *result_gen = &results[idx];
+  global char *output_ptr = result_gen->output;
 #endif
 
 #endif
   //keep this comment
 
-  // output
-private
-  char output[PADDED_INPUT_ARRAY_SIZE];
-private
-  char *output_ptr = output;
-
-  short current_state = starting_state;
-
   // execute
+  short current_state = starting_state;
 #if FSM_INPUTS_COAL_CHAR4
   while ((*input_ptr).x != '\0') {
 #else
@@ -137,22 +137,9 @@ private
 #endif
   }
 
-  // results
-  int length = strlen(output);
 
-#if FSM_INPUTS_WITH_OFFSETS
-  for (int i = 0; i < length; i++) {
-    results[offset + i] = output[i];
-  }
-#else
-  global struct partecl_result *result_gen = &results[idx];
-  for (int i = 0; i < length; i++) {
-    result_gen->output[i] = output[i];
-  }
-  result_gen->length = length;
+#if !FSM_INPUTS_WITH_OFFSETS
+  // results
+  result_gen->length = strlen_global(result_gen->output);
 #endif
 }
-
-
-
-

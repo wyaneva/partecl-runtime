@@ -20,10 +20,9 @@ int get_index(short current_state, char input) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
-                    TEST_INPUTS_ATTR char input[], int length,
-                    private char *output_ptr) {
+                    char input, int length, private char *output_ptr) {
 
-  int index = get_index(current_state, input[0]);
+  int index = get_index(current_state, input);
   transition trans = transitions[index];
 
   if (trans.next_state == -1) {
@@ -33,7 +32,6 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
 
   strcpy(output_ptr, trans.output);
   return trans.next_state;
-
 }
 
 /**
@@ -50,7 +48,7 @@ kernel void execute_fsm(global char *inputs,
                         int num_test_cases) {
 #else
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-kernel void execute_fsm(global char *inputs,
+kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global struct partecl_result *results,
                         FSM_ATTR_KNL transition *transitions,
                         int starting_state, int input_length, int output_length,
@@ -65,6 +63,15 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
 
   int idx = get_global_id(0);
+  if (idx == 0) {
+    for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N; j++) {
+      printf("%c ", inputs[j].x);
+      printf("%c ", inputs[j].y);
+      printf("%c ", inputs[j].z);
+      printf("%c ", inputs[j].w);
+      printf("\n");
+    }
+  }
 
   // FSM
 #if FSM_LOCAL_MEMORY
@@ -83,13 +90,11 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
   int coal_idx = idx * input_length;
-  global char *input_ptr = &inputs[coal_idx];
+  global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
 #else
   struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;
 #endif
-
-printf("%s\n", input_ptr);
 
 #endif
   //keep this comment
@@ -103,18 +108,35 @@ private
   short current_state = starting_state;
 
   // execute
-  while (*input_ptr != '\0') {
-
-    if (current_state == -1) {
-      //return;
-    }
-
-#if FSM_LOCAL_MEMORY
-    current_state = lookup_symbol(transitions_local, current_state, input_ptr,
-                                  input_length, output_ptr);
+#if FSM_INPUTS_COAL_CHAR4
+  while ((*input_ptr).x != '\0') {
 #else
-    current_state = lookup_symbol(transitions, current_state, input_ptr,
+  while (*input_ptr != '\0') {
+#endif
+
+#if FSM_INPUTS_COAL_CHAR4
+    current_state = lookup_symbol(transitions, current_state, (*input_ptr).x,
                                   input_length, output_ptr);
+    output_ptr += output_length;
+
+    if (input_ptr[0].y == '\0') break;
+    current_state = lookup_symbol(transitions, current_state, (*input_ptr).y,
+                                  input_length, output_ptr);
+    output_ptr += output_length;
+
+    if (input_ptr[0].z == '\0') break;
+    current_state = lookup_symbol(transitions, current_state, (*input_ptr).z,
+                                  input_length, output_ptr);
+    output_ptr += output_length;
+
+    if (input_ptr[0].w == '\0') break;
+    current_state = lookup_symbol(transitions, current_state, (*input_ptr).w,
+                                  input_length, output_ptr);
+    output_ptr += output_length;
+#else
+    current_state = lookup_symbol(transitions, current_state, (*input_ptr),
+                                  input_length, output_ptr);
+    output_ptr += output_length;
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
@@ -122,8 +144,6 @@ private
 #else
     input_ptr += input_length;
 #endif
-
-    output_ptr += output_length;
   }
 
   // results

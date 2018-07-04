@@ -46,7 +46,7 @@
 
 #if !FSM_INPUTS_COAL_CHAR
 #ifndef FSM_INPUTS_COAL_CHAR4
-#define FSM_INPUTS_COAL_CHAR4 0
+#define FSM_INPUTS_COAL_CHAR4 1
 #endif
 #endif
 
@@ -54,6 +54,13 @@
 #define TEST_INPUTS_ATTR global
 #else
 #define TEST_INPUTS_ATTR
+#endif
+
+#if FSM_INPUTS_COAL_CHAR4
+#define CHAR_N 4
+#define TEST_INPUTS_TYPE char4
+#else
+#define TEST_INPUTS_TYPE char
 #endif
 
 #endif

@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <CL/cl.h>
 #include "../kernel-gen/cpu-gen.h"
 #include "../kernel-gen/fsm.cl"
 #include "../kernel-gen/fsm.h"
@@ -183,21 +184,37 @@ int main(int argc, char **argv) {
 
 #if FSM_INPUTS_COAL_CHAR4
   size_t size_inputs_coal_char4 =
-      sizeof(int) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
-  int *inputs_coal_char4 = (int *)malloc(size_inputs_coal_char4);
+      sizeof(cl_char4) * PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N;
+  cl_char4 *inputs_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
   int max_num_inputs =
       PADDED_INPUT_ARRAY_SIZE /
       input_length; // this is the maximum number of inputs per test case
-  for (int i = 0; i < max_num_inputs; i++) { // which input inside the test case
+  for (int i = 0; i < max_num_inputs; i += CHAR_N) { // which input inside the test case
     for (int j = 0; j < num_test_cases; j++) { // which test case
       struct partecl_input current_input = inputs[j];
-      for (int k = 0; k < input_length; k++) {
-        size_t idx = (i * num_test_cases + j) * input_length + k;
-        int current_symbol =
-            (unsigned char)current_input.input_ptr[i * input_length + k];
-        inputs_coal_char4[idx] = current_symbol;
+
+      size_t idx = (i / CHAR_N) * num_test_cases + j;
+      for (int k = 0; k < CHAR_N; k++) {
+        char current_symbol = current_input.input_ptr[i + k];
+        inputs_coal_char4[idx].s[k] = current_symbol;
       }
+
+      //      for (int k = 0; k < input_length; k++) {
+      //        size_t idx = (i * num_test_cases + j) * input_length + k;
+      //        int current_symbol =
+      //            (unsigned char)current_input.input_ptr[i * input_length +
+      //            k];
+      //        inputs_coal_char4[idx] = current_symbol;
+      //      }
     }
+  }
+
+  for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N; j++) {
+    printf("%c ", inputs_coal_char4[j].s[0]);
+    printf("%c ", inputs_coal_char4[j].s[1]);
+    printf("%c ", inputs_coal_char4[j].s[2]);
+    printf("%c ", inputs_coal_char4[j].s[3]);
+    printf("\n");
   }
 #endif
 
@@ -414,7 +431,7 @@ int main(int argc, char **argv) {
 #else
 #if FSM_INPUTS_COAL_CHAR4
       err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE, sizeof(int) * chunksize * j,
+          queue_inputs, buf_inputs, CL_FALSE, sizeof(cl_char4) * chunksize * j,
           size_inputs_coal_char4 / num_chunks,
           inputs_coal_char4 + chunksize * j, 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)

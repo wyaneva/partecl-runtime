@@ -19,4 +19,7 @@ void results_with_offsets_to_partecl_results(const char *results_offset,
                                              const int total_number_of_inputs,
                                              const int *offsets,
                                              const int num_test_cases);
+
+int sort_test_cases_by_length(struct partecl_input *inputs, int num_test_cases);
+
 #endif

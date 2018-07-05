@@ -41,9 +41,9 @@
 #define KERNEL_OPTIONS ""
 #endif
 
-void pad_test_case_number(cl_device_id *, int *);
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
+void pad_test_case_number(cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv) {
@@ -58,12 +58,13 @@ int main(int argc, char **argv) {
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
   int do_pad_test_cases = DO_PAD_TEST_CASES;
+  int do_sort_test_cases = DO_SORT_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &do_pad_test_cases, &filename) == FAIL) {
+                   &do_pad_test_cases, &do_sort_test_cases, &filename) == FAIL) {
     return 0;
   }
 
@@ -104,8 +105,19 @@ int main(int argc, char **argv) {
   results = (struct partecl_result *)malloc(size_results);
 
   // read the test cases
-  if (read_test_cases(inputs, num_test_cases) == FAIL)
-    return 0;
+  if (read_test_cases(inputs, num_test_cases) == FAIL) {
+    printf("Failed reading the test cases.\n");
+    return -1;
+  }
+
+  if (do_sort_test_cases) {
+    // sort test cases
+    if (sort_test_cases_by_length(inputs, num_test_cases) == FAIL)
+    {
+      printf("Failed sorting the test cases.\n");
+      return -1;
+    }
+  }
 
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
@@ -724,4 +736,3 @@ void calculate_global_offset(size_t goffset[3], int chunksize, int j) {
 void read_expected_results(struct partecl_result *results, int num_test_cases) {
   // TODO:
 }
-

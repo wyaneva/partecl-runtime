@@ -60,10 +60,11 @@ int main(int argc, char **argv) {
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int num_test_cases = 1;
+  int do_sort_test_cases = DO_SORT_TEST_CASES;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
-                   &num_runs, NULL, NULL, NULL, NULL, &filename) == FAIL)
+                   &num_runs, NULL, NULL, NULL, NULL, &do_sort_test_cases, &filename) == FAIL)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);
@@ -82,8 +83,18 @@ int main(int argc, char **argv) {
   results = (struct partecl_result *)malloc(results_size);
 
   // read the test cases
-  if (read_test_cases(inputs, num_test_cases) == FAIL)
-    return 0;
+  if (read_test_cases(inputs, num_test_cases) == FAIL) {
+    printf("Failed reading the test cases.\n");
+    return -1;
+  }
+
+  if (do_sort_test_cases) {
+    // sort the test cases
+    if (sort_test_cases_by_length(inputs, num_test_cases) == FAIL) {
+      printf("Failed sorting the test cases by length.\n");
+      return -1;
+    }
+  }
 
   // execute the main code - TODO: plug it automatically
   int num_transitions;

@@ -57,14 +57,14 @@ int main(int argc, char **argv) {
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
-  int do_sort_test_cases = DO_SORT_TEST_CASES;
   int do_pad_test_cases = DO_PAD_TEST_CASES;
+  int do_sort_test_cases = DO_SORT_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &do_pad_test_cases, &filename) == FAIL) {
+                   &do_pad_test_cases, &do_sort_test_cases, &filename) == FAIL) {
     return 0;
   }
 
@@ -105,13 +105,20 @@ int main(int argc, char **argv) {
   results = (struct partecl_result *)malloc(size_results);
 
   // read the test cases
-  if (read_test_cases(inputs, num_test_cases) == FAIL)
-    return 0;
+  if (read_test_cases(inputs, num_test_cases) == FAIL) {
+    printf("Failed reading the test cases.\n");
+    return -1;
+  }
 
-  // sort test cases
-  if (sort_test_cases_by_length(inputs, num_test_cases) == SUCCESS)
-    printf("YAYYY!\n");
-  
+  if (do_sort_test_cases) {
+    // sort test cases
+    if (sort_test_cases_by_length(inputs, num_test_cases) == FAIL)
+    {
+      printf("Failed sorting the test cases.\n");
+      return -1;
+    }
+  }
+
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
                                                 num_test_cases);

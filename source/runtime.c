@@ -588,7 +588,6 @@ int main(int argc, char **argv) {
         *outputptr = results_coal[j];
         outputptr++;
       }
-      results[i].length = strlen(results[i].output);
     }
 #endif
 
@@ -601,7 +600,6 @@ int main(int argc, char **argv) {
           outputptr++;
         }
       }
-      results[i].length = strlen(results[i].output);
     }
 #endif
 

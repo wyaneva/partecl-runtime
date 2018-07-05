@@ -11,7 +11,6 @@ typedef struct partecl_input
 typedef struct partecl_result
 {
   char output[PADDED_INPUT_ARRAY_SIZE];
-  int length;
 } partecl_result;
 
 #endif

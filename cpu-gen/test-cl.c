@@ -61,9 +61,4 @@ void run_main(struct partecl_input input, struct partecl_result *result,
     input_ptr += input_length;
     output_ptr += output_length;
   }
-
-#if !FSM_INPUTS_WITH_OFFSETS
-  int length = strlen(result->output);
-  result->length = length;
-#endif
 }

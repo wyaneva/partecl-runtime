@@ -99,6 +99,5 @@ void results_with_offsets_to_partecl_results(const char *results_offset,
       outputptr++;
     }
     *outputptr = '\0';
-    results[i].length = end - start - 1;
   }
 }

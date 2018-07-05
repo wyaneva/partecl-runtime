@@ -141,9 +141,5 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #endif
   }
 
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR && !FSM_INPUTS_COAL_CHAR4
-  // results
   *output_ptr ='\0';
-  result_gen->length = strlen_global(result_gen->output);
-#endif
 }

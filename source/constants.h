@@ -64,7 +64,7 @@
  *  1. FSM storage in constant & local memory where possible
  */
 #ifndef FSM_OPTIMISE_CONST_MEM
-#define FSM_OPTIMISE_CONST_MEM 1
+#define FSM_OPTIMISE_CONST_MEM 0
 #endif
 
 /*

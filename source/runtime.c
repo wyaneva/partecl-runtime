@@ -97,12 +97,8 @@ int main(int argc, char **argv) {
   int chunksize = num_test_cases / num_chunks;
 
   // allocate CPU memory and generate test cases
-  struct partecl_input *inputs;
-  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input *)malloc(size_inputs);
-  struct partecl_result *results;
-  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(size_results);
+  struct partecl_input *inputs = (struct partecl_input *)malloc(
+      sizeof(struct partecl_input) * num_test_cases);
 
   // read the test cases
   if (read_test_cases(inputs, num_test_cases) == FAIL) {
@@ -110,12 +106,26 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  // distribute the test cases in chunks
+  struct partecl_input *inputs_chunks[num_chunks];
+  size_t size_inputs_chunks = sizeof(struct partecl_input) * chunksize;
+  struct partecl_result *results_chunks[num_chunks];
+  size_t size_results_chunks = sizeof(struct partecl_result) * chunksize;
+  for (int i = 0; i < num_chunks; i++) {
+    inputs_chunks[i] = (struct partecl_input *)malloc(size_inputs_chunks);
+    for (int j = 0; j < chunksize; j++) {
+      inputs_chunks[i][j] = inputs[i * chunksize + j];
+    }
+    results_chunks[i] = (struct partecl_result *)malloc(size_results_chunks);
+  }
+
   if (do_sort_test_cases) {
     // sort test cases
-    if (sort_test_cases_by_length(inputs, num_test_cases) == FAIL)
-    {
-      printf("Failed sorting the test cases.\n");
-      return -1;
+    for (int i = 0; i < num_chunks; i++) {
+      if (sort_test_cases_by_length(inputs_chunks[i], chunksize) == FAIL) {
+        printf("Failed sorting the test cases.\n");
+        return -1;
+      }
     }
   }
 
@@ -590,7 +600,15 @@ int main(int argc, char **argv) {
     }
 
 #if FSM_INPUTS_WITH_OFFSETS
-    results_with_offsets_to_partecl_results(results_offset, results, total_number_of_inputs, offsets, num_test_cases);
+    // TODO: need to implement properly for chunking
+    // results_offset
+    // total_number_of_inputs
+    // offsets
+    for (int i = 0; i < num_chunks; i++) {
+      results_with_offsets_to_partecl_results(results_offset, results_chunks[i],
+                                              total_number_of_inputs, offsets,
+                                              chunksize);
+    }
 #endif
 
 #if FSM_INPUTS_COAL_CHAR
@@ -625,6 +643,15 @@ int main(int argc, char **argv) {
     }
 #endif
 
+    // copy results to a struct
+    struct partecl_result *results = (struct partecl_result *)malloc(
+        sizeof(struct partecl_result) * num_test_cases);
+    for (int i = 0; i < num_chunks; i++) {
+      for (int j = 0; j < chunksize; j++) {
+        results[i * chunksize + j] = results_chunks[i][j];
+      }
+    }
+
     // check results
     if (do_compare_results)
       compare_results(results, exp_results, num_test_cases);
@@ -640,10 +667,14 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clReleaseEvent (event_kernel) %d: %d\n", j, err);
     }
+    free(results);
   }
 
   free(inputs);
-  free(results);
+  for (int i = 0; i < num_chunks; i++) {
+    free(inputs_chunks[i]);
+    free(results_chunks[i]);
+  }
   free(exp_results);
 #if FSM_INPUTS_COAL_CHAR
   free(inputs_coal);

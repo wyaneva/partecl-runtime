@@ -107,11 +107,11 @@ int main(int argc, char **argv) {
 
   // allocate CPU memory and generate test cases
   struct partecl_input *inputs_par;
-  size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
-  inputs_par = (struct partecl_input *)malloc(size_inputs);
+  size_t size_inputs_par = sizeof(struct partecl_input) * num_test_cases;
+  inputs_par = (struct partecl_input *)malloc(size_inputs_par);
   struct partecl_result *results_par;
-  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results_par = (struct partecl_result *)malloc(size_results);
+  size_t size_results_par = sizeof(struct partecl_result) * num_test_cases;
+  results_par = (struct partecl_result *)malloc(size_results_par);
 
   // read the test cases
   if (read_test_cases(inputs_par, num_test_cases) == FAIL) {
@@ -161,6 +161,7 @@ int main(int argc, char **argv) {
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
 
+  // prepare inputs
 #if FSM_INPUTS_WITH_OFFSETS
   // calculate sizes
   int total_number_of_inputs;
@@ -225,9 +226,18 @@ int main(int argc, char **argv) {
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_coal_char4);
 #else
+  // TODO: put into char* arrays based on buckets
+  size_t size_inputs = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
+  char *inputs = (char *)malloc(size_inputs);
+  char *results = (char *)malloc(size_inputs);
+  for (int i = 0; i < num_test_cases; i++) {
+    for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE; j++) {
+      inputs[i * PADDED_INPUT_ARRAY_SIZE + j] = inputs_par[i].input_ptr[j];
+    }
+  }
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_results);
+         size_inputs);
 #endif
 #endif
 #endif
@@ -276,6 +286,7 @@ int main(int argc, char **argv) {
   }
   free(knl_text);
 
+  // start kernel operations
   if (do_time) {
     printf("Time in ms\n");
     printf("trans-inputs\ttrans-results\texec-kernel\ttime-total\n");
@@ -324,13 +335,14 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
+    // TODO create buffers based on buckets
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
     cl_mem buf_results =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #endif
@@ -463,8 +475,8 @@ int main(int argc, char **argv) {
 #else
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE,
-          sizeof(partecl_input) * chunksize * j, size_inputs / num_chunks,
-          inputs_par + chunksize * j, 0, NULL, &event_inputs[j]);
+          sizeof(char) * chunksize * j, size_inputs / num_chunks,
+          inputs + chunksize * j, 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
@@ -507,9 +519,9 @@ int main(int argc, char **argv) {
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
-                                sizeof(struct partecl_result) * chunksize * j,
-                                size_results / num_chunks,
-                                results_par + chunksize * j, 1, &event_kernel[j],
+                                sizeof(char) * chunksize * j,
+                                size_inputs / num_chunks,
+                                results + chunksize * j, 1, &event_kernel[j],
                                 &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
@@ -588,13 +600,11 @@ int main(int argc, char **argv) {
 
 #if FSM_INPUTS_WITH_OFFSETS
     results_with_offsets_to_partecl_results(results_offset, results_par, total_number_of_inputs, offsets, num_test_cases);
-#endif
-
+#else
 #if FSM_INPUTS_COAL_CHAR
     int max_input_size = PADDED_INPUT_ARRAY_SIZE;
     transpose_results_back_char(results_coal, results_par, max_input_size, num_test_cases);
-#endif
-
+#else
 #if FSM_INPUTS_COAL_CHAR4
     for (int i = 0; i < num_test_cases; i++) {
       char *outputptr = results_par[i].output;
@@ -615,6 +625,14 @@ int main(int argc, char **argv) {
         }
       }
     }
+#else
+    for(int i = 0; i < num_test_cases; i++) {
+      for(int j = 0; j < PADDED_INPUT_ARRAY_SIZE; j++) {
+        results_par[i].output[j] = results[i*PADDED_INPUT_ARRAY_SIZE + j];
+      }
+    }
+#endif
+#endif
 #endif
 
     // check results
@@ -637,6 +655,8 @@ int main(int argc, char **argv) {
   free(inputs_par);
   free(results_par);
   free(exp_results);
+  free(inputs);
+  free(results);
 #if FSM_INPUTS_COAL_CHAR
   free(inputs_coal);
 #endif

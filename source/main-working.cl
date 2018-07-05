@@ -48,19 +48,11 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
-#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
-#else
-kernel void execute_fsm(global struct partecl_input *inputs,
-                        global struct partecl_result *results,
-                        FSM_ATTR_KNL transition *transitions_knl,
-                        int starting_state, int input_length, int output_length,
-                        int num_test_cases) {
-#endif
 #endif
 
   int idx = get_global_id(0);
@@ -91,11 +83,8 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
   global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #else
-  struct partecl_input input_gen = inputs[idx];
-  char *input_ptr = input_gen.input_ptr;
-
-  global struct partecl_result *result_gen = &results[idx];
-  global char *output_ptr = result_gen->output;
+  global TEST_INPUTS_TYPE *input_ptr = &inputs[idx*PADDED_INPUT_ARRAY_SIZE];
+  global TEST_INPUTS_TYPE *output_ptr = &results[idx*PADDED_INPUT_ARRAY_SIZE];
 #endif
 
 #endif

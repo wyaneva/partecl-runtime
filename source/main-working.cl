@@ -44,20 +44,20 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
 kernel void execute_fsm(global char *inputs,
                         global char *results,
                         global int *offsets,
-                        FSM_ATTR_KNL transition *transitions,
+                        FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
-                        FSM_ATTR_KNL transition *transitions,
+                        FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
 kernel void execute_fsm(global struct partecl_input *inputs,
                         global struct partecl_result *results,
-                        FSM_ATTR_KNL transition *transitions,
+                        FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #endif
@@ -70,8 +70,11 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // copy FSM into local memory
   local transition transitions_local[NUM_TRANSITIONS_KERNEL];
   for (int i = 0; i < NUM_TRANSITIONS_KERNEL; i++) {
-    transitions_local[i] = transitions[i];
+    transitions_local[i] = transitions_knl[i];
   }
+  FSM_ATTR transition *transitions = transitions_local;
+#else
+  FSM_ATTR transition *transitions = transitions_knl;
 #endif
 
   // input

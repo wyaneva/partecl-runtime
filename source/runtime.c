@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_results, &ctx, &device);
 
   // pad the test case number to nearest multiple of workgroup size
-  //pad_test_case_number(&device, &num_test_cases);
+  pad_test_case_number(&device, &num_test_cases);
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests

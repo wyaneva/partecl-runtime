@@ -27,10 +27,11 @@ void compare_results(struct partecl_result* results, struct partecl_result* exp_
   {
     struct partecl_result curres = results[i];
     printf("TC %d: ", i+1);
-    for(int k = 0; k < curres.length; k++)
+    char* outputptr = curres.output;
+    while(*outputptr != '\0')
     {
-      char curel = curres.output[k];
-      printf("%c ", curel);
+      printf("%c ", *outputptr);
+      outputptr++;
     }
     printf("\n");
   }

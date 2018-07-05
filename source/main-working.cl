@@ -20,7 +20,7 @@ int get_index(short current_state, char input) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
-                    char input, int length, private char *output_ptr) {
+                    char input, int length, TEST_OUTPUTS_ATTR char *output_ptr) {
 
   int index = get_index(current_state, input);
   transition trans = transitions[index];
@@ -30,7 +30,8 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
            current_state, input);
   }
 
-  strcpy(output_ptr, trans.output);
+  *output_ptr = *(trans.output);
+  //strcpy_global(output_ptr, trans.output);
   return trans.next_state;
 }
 
@@ -49,7 +50,7 @@ kernel void execute_fsm(global char *inputs,
 #else
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
-                        global struct partecl_result *results,
+                        global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
@@ -77,82 +78,80 @@ kernel void execute_fsm(global struct partecl_input *inputs,
 #if FSM_INPUTS_WITH_OFFSETS
   int offset = offsets[idx];
   global char *input_ptr = &inputs[offset];
+  global char *output_ptr = &results[offset];
 #else
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-  int coal_idx = idx; //* input_length;
+  int coal_idx = idx;
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
+  global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #else
   struct partecl_input input_gen = inputs[idx];
   char *input_ptr = input_gen.input_ptr;
+
+  global struct partecl_result *result_gen = &results[idx];
+  global char *output_ptr = result_gen->output;
 #endif
 
 #endif
   //keep this comment
 
-  // output
-private
-  char output[PADDED_INPUT_ARRAY_SIZE];
-private
-  char *output_ptr = output;
-
-  short current_state = starting_state;
-
   // execute
+  short current_state = starting_state;
 #if FSM_INPUTS_COAL_CHAR4
-  while ((*input_ptr).x != '\0') {
+  while (true) {
 #else
   while (*input_ptr != '\0') {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
+    char output_temp;
+    if ((*input_ptr).x == '\0') {
+      (*output_ptr).x = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).x,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).x = output_temp;
 
-    if (input_ptr[0].y == '\0') break;
+    if ((*input_ptr).y == '\0') {
+      (*output_ptr).y = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).y,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).y = output_temp;
 
-    if (input_ptr[0].z == '\0') break;
+    if ((*input_ptr).z == '\0') {
+      (*output_ptr).z = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).z,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).z = output_temp;
 
-    if (input_ptr[0].w == '\0') break;
+    if ((*input_ptr).w == '\0') {
+      (*output_ptr).w = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).w,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).w = output_temp;
 #else
     current_state = lookup_symbol(transitions, current_state, (*input_ptr),
                                   input_length, output_ptr);
-    output_ptr += output_length;
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
     input_ptr += input_length * num_test_cases;
+    output_ptr += output_length * num_test_cases;
 #else
     input_ptr += input_length;
+    output_ptr += output_length;
 #endif
   }
 
-  // results
-  int length = strlen(output);
-
-#if FSM_INPUTS_WITH_OFFSETS
-  for (int i = 0; i < length; i++) {
-    results[offset + i] = output[i];
-  }
-#else
-  global struct partecl_result *result_gen = &results[idx];
-  for (int i = 0; i < length; i++) {
-    result_gen->output[i] = output[i];
-  }
-  result_gen->length = length;
+#if !FSM_INPUTS_COAL_CHAR4
+  *output_ptr ='\0';
 #endif
 }
-
-
-
-

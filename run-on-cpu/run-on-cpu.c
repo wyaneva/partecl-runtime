@@ -53,6 +53,9 @@ void run_on_cpu(struct partecl_input input, struct partecl_result *result,
 #endif
 
 int main(int argc, char **argv) {
+
+  print_sanity_checks();
+
   int do_print_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
@@ -60,7 +63,7 @@ int main(int argc, char **argv) {
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
-                   &num_runs, NULL, NULL, NULL, &filename) == FAIL)
+                   &num_runs, NULL, NULL, NULL, NULL, &filename) == FAIL)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);

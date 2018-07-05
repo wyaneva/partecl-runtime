@@ -48,6 +48,8 @@ void read_expected_results(struct partecl_result *, int);
 
 int main(int argc, char **argv) {
 
+  print_sanity_checks();
+
   // read command line options
   int do_compare_results = HANDLE_RESULTS;
   int num_runs = NUM_RUNS;
@@ -55,13 +57,14 @@ int main(int argc, char **argv) {
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
-  int sort_test_cases = SORT_TEST_CASES;
+  int do_sort_test_cases = DO_SORT_TEST_CASES;
+  int do_pad_test_cases = DO_PAD_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &filename) == FAIL) {
+                   &do_pad_test_cases, &filename) == FAIL) {
     return 0;
   }
 
@@ -77,8 +80,10 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
 
-  // pad the test case number to nearest multiple of workgroup size
-  //pad_test_case_number(&device, &num_test_cases);
+  if (do_pad_test_cases) {
+    // pad the test case number to nearest multiple of workgroup size
+    pad_test_case_number(&device, &num_test_cases);
+  }
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests
@@ -144,7 +149,8 @@ int main(int argc, char **argv) {
   // calculate sizes
   int total_number_of_inputs;
   size_t size_inputs_offset;
-  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset, inputs, num_test_cases);
+  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
+                              inputs, num_test_cases);
 
   // allocate memory
   char *inputs_offset = (char *)malloc(size_inputs_offset);
@@ -155,13 +161,11 @@ int main(int argc, char **argv) {
   partecl_input_to_input_with_offsets(inputs, inputs_offset, offsets,
                                       num_test_cases);
 
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_offset);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_inputs_offset);
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
 #else
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases, size_results);
-#endif
-
 #if FSM_INPUTS_COAL_CHAR
   // transpose inputs for coalesced reading on gpu
   // TODO: This might be a potentially automatically generated code, as it
@@ -185,17 +189,24 @@ int main(int argc, char **argv) {
       }
     }
   }
-#endif
-
+  char *results_coal = (char *)malloc(size_inputs_coal);
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_coal);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_coal);
+#else
 #if FSM_INPUTS_COAL_CHAR4
   // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
+  int padded_size =
+      PADDED_INPUT_ARRAY_SIZE + CHAR_N - PADDED_INPUT_ARRAY_SIZE % CHAR_N;
   size_t size_inputs_coal_char4 =
-      sizeof(cl_char4) * PADDED_INPUT_ARRAY_SIZE * num_test_cases / CHAR_N;
+      sizeof(cl_char4) * padded_size * num_test_cases / CHAR_N;
   cl_char4 *inputs_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
   int max_num_inputs =
       PADDED_INPUT_ARRAY_SIZE /
       input_length; // this is the maximum number of inputs per test case
-  for (int i = 0; i < max_num_inputs; i += CHAR_N) { // which input inside the test case
+  for (int i = 0; i < max_num_inputs;
+       i += CHAR_N) { // which input inside the test case
     for (int j = 0; j < num_test_cases; j++) { // which test case
       struct partecl_input current_input = inputs[j];
 
@@ -206,7 +217,17 @@ int main(int argc, char **argv) {
       }
     }
   }
-
+  cl_char4 *results_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_coal_char4);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_coal_char4);
+#else
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_results);
+#endif
+#endif
 #endif
 
   // create kernel
@@ -271,37 +292,45 @@ int main(int argc, char **argv) {
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
 #if FSM_INPUTS_COAL_CHAR
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
     cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
                                        size_inputs_coal_char4, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal_char4, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
-#endif
-#endif
-#endif
 
-#if FSM_INPUTS_WITH_OFFSETS
-    cl_mem buf_results =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
-    if (err != CL_SUCCESS)
-      printf("error: clCreateBuffer buf_results: %d\n", err);
-#else
     cl_mem buf_results =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_results, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
+#endif
+#endif
 #endif
 
 #if FSM_INPUTS_WITH_OFFSETS
@@ -447,24 +476,43 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
-      // transfer results back
+        // transfer results back
 #if FSM_INPUTS_WITH_OFFSETS
       err = clEnqueueReadBuffer(
-          queue_results, buf_results, CL_FALSE,
-          sizeof(char) * chunksize * j, size_inputs_offset / num_chunks,
-          results_offset + chunksize * j, 1, &event_kernel[j], &event_results[j]);
+          queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs_offset / num_chunks, results_offset + chunksize * j, 1,
+          &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-    }
 #else
+#if FSM_INPUTS_COAL_CHAR
       err = clEnqueueReadBuffer(
-          queue_results, buf_results, CL_FALSE,
-          sizeof(partecl_result) * chunksize * j, size_results / num_chunks,
-          results + chunksize * j, 1, &event_kernel[j], &event_results[j]);
+          queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
+          size_inputs_coal / num_chunks, results_coal + chunksize * j, 1,
+          &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-    }
+#else
+#if FSM_INPUTS_COAL_CHAR4
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+                                sizeof(cl_char4) * chunksize * j,
+                                size_inputs_coal_char4 / num_chunks,
+                                results_coal_char4 + chunksize * j, 1,
+                                &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+#else
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+                                sizeof(struct partecl_result) * chunksize * j,
+                                size_results / num_chunks,
+                                results + chunksize * j, 1, &event_kernel[j],
+                                &event_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #endif
+#endif
+#endif
+    }
 
     // finish the kernels
     err = clFinish(queue_inputs);
@@ -489,6 +537,16 @@ int main(int argc, char **argv) {
     err = clReleaseMemObject(buf_results);
     if (err != CL_SUCCESS)
       printf("error: clReleaseMemObjec: %d\n", err);
+
+    err = clReleaseMemObject(buf_transitions);
+    if (err != CL_SUCCESS)
+      printf("error: clReleaseMemObjec: %d\n", err);
+
+#if FSM_INPUTS_WITH_OFFSETS
+    err = clReleaseMemObject(buf_offsets);
+    if (err != CL_SUCCESS)
+      printf("error: clReleaseMemObjec: %d\n", err);
+#endif
 
     // gather performance data
     for (int j = 0; j < num_chunks; j++) {
@@ -528,6 +586,38 @@ int main(int argc, char **argv) {
     results_with_offsets_to_partecl_results(results_offset, results, total_number_of_inputs, offsets, num_test_cases);
 #endif
 
+#if FSM_INPUTS_COAL_CHAR
+    for (int i = 0; i < num_test_cases; i++) {
+      char* outputptr = results[i].output;
+      for (int j = i; j < PADDED_INPUT_ARRAY_SIZE*num_test_cases; j += num_test_cases) {
+        *outputptr = results_coal[j];
+        outputptr++;
+      }
+    }
+#endif
+
+#if FSM_INPUTS_COAL_CHAR4
+    for (int i = 0; i < num_test_cases; i++) {
+      char *outputptr = results[i].output;
+      int reached_end = 0;
+      for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
+           j += num_test_cases) {
+        if (reached_end) {
+          break;
+        }
+
+        for (int k = 0; k < CHAR_N; k++) {
+          *outputptr = results_coal_char4[j].s[k];
+          if (*outputptr == '\0') {
+            reached_end = 1;
+            break;
+          }
+          outputptr++;
+        }
+      }
+    }
+#endif
+
     // check results
     if (do_compare_results)
       compare_results(results, exp_results, num_test_cases);
@@ -548,6 +638,17 @@ int main(int argc, char **argv) {
   free(inputs);
   free(results);
   free(exp_results);
+#if FSM_INPUTS_COAL_CHAR
+  free(inputs_coal);
+#endif
+#if FSM_INPUTS_COAL_CHAR4
+  free(inputs_coal_char4);
+#endif
+#if FSM_INPUTS_WITH_OFFSETS
+  free(inputs_offset);
+  free(results_offset);
+  free(offsets);
+#endif
 }
 
 void pad_test_case_number(cl_device_id *device, int *num_test_cases) {

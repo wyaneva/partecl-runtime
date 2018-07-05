@@ -67,12 +67,13 @@ int main(int argc, char **argv) {
   int num_chunks = NUM_CHUNKS;
   int do_pad_test_cases = DO_PAD_TEST_CASES;
   int do_sort_test_cases = DO_SORT_TEST_CASES;
+  int bucket_width = PADDED_INPUT_ARRAY_SIZE; // for grouping test cases based on length
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &do_pad_test_cases, &do_sort_test_cases, &filename) == FAIL) {
+                   &do_pad_test_cases, &do_sort_test_cases, &bucket_width, &filename) == FAIL) {
     return 0;
   }
 
@@ -105,22 +106,22 @@ int main(int argc, char **argv) {
   int chunksize = num_test_cases / num_chunks;
 
   // allocate CPU memory and generate test cases
-  struct partecl_input *inputs;
+  struct partecl_input *inputs_par;
   size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
-  inputs = (struct partecl_input *)malloc(size_inputs);
-  struct partecl_result *results;
+  inputs_par = (struct partecl_input *)malloc(size_inputs);
+  struct partecl_result *results_par;
   size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(size_results);
+  results_par = (struct partecl_result *)malloc(size_results);
 
   // read the test cases
-  if (read_test_cases(inputs, num_test_cases) == FAIL) {
+  if (read_test_cases(inputs_par, num_test_cases) == FAIL) {
     printf("Failed reading the test cases.\n");
     return -1;
   }
 
   if (do_sort_test_cases) {
     // sort test cases
-    if (sort_test_cases_by_length(inputs, num_test_cases) == FAIL)
+    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL)
     {
       printf("Failed sorting the test cases.\n");
       return -1;
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
   int total_number_of_inputs;
   size_t size_inputs_offset;
   calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
-                              inputs, num_test_cases);
+                              inputs_par, num_test_cases);
 
   // allocate memory
   char *inputs_offset = (char *)malloc(size_inputs_offset);
@@ -173,7 +174,7 @@ int main(int argc, char **argv) {
   int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
 
   // copy data
-  partecl_input_to_input_with_offsets(inputs, inputs_offset, offsets,
+  partecl_input_to_input_with_offsets(inputs_par, inputs_offset, offsets,
                                       num_test_cases);
 
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
@@ -188,7 +189,7 @@ int main(int argc, char **argv) {
   char *inputs_coal = (char *)malloc(size_inputs_coal);
   char *results_coal = (char *)malloc(size_inputs_coal);
 
-  transpose_inputs_char(inputs, inputs_coal, max_input_size, num_test_cases,
+  transpose_inputs_char(inputs_par, inputs_coal, max_input_size, num_test_cases,
                         input_length);
 
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
@@ -209,7 +210,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < max_num_inputs;
        i += CHAR_N) { // which input inside the test case
     for (int j = 0; j < num_test_cases; j++) { // which test case
-      struct partecl_input current_input = inputs[j];
+      struct partecl_input current_input = inputs_par[j];
 
       size_t idx = (i / CHAR_N) * num_test_cases + j;
       for (int k = 0; k < CHAR_N; k++) {
@@ -463,7 +464,7 @@ int main(int argc, char **argv) {
       err = clEnqueueWriteBuffer(
           queue_inputs, buf_inputs, CL_FALSE,
           sizeof(partecl_input) * chunksize * j, size_inputs / num_chunks,
-          inputs + chunksize * j, 0, NULL, &event_inputs[j]);
+          inputs_par + chunksize * j, 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
@@ -508,7 +509,7 @@ int main(int argc, char **argv) {
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
                                 sizeof(struct partecl_result) * chunksize * j,
                                 size_results / num_chunks,
-                                results + chunksize * j, 1, &event_kernel[j],
+                                results_par + chunksize * j, 1, &event_kernel[j],
                                 &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
@@ -586,17 +587,17 @@ int main(int argc, char **argv) {
     }
 
 #if FSM_INPUTS_WITH_OFFSETS
-    results_with_offsets_to_partecl_results(results_offset, results, total_number_of_inputs, offsets, num_test_cases);
+    results_with_offsets_to_partecl_results(results_offset, results_par, total_number_of_inputs, offsets, num_test_cases);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR
     int max_input_size = PADDED_INPUT_ARRAY_SIZE;
-    transpose_results_back_char(results_coal, results, max_input_size, num_test_cases);
+    transpose_results_back_char(results_coal, results_par, max_input_size, num_test_cases);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
     for (int i = 0; i < num_test_cases; i++) {
-      char *outputptr = results[i].output;
+      char *outputptr = results_par[i].output;
       int reached_end = 0;
       for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
            j += num_test_cases) {
@@ -618,7 +619,7 @@ int main(int argc, char **argv) {
 
     // check results
     if (do_compare_results)
-      compare_results(results, exp_results, num_test_cases);
+      compare_results(results_par, exp_results, num_test_cases);
 
     for (int j = 0; j < num_chunks; j++) {
       err = clReleaseEvent(event_inputs[j]);
@@ -633,8 +634,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  free(inputs);
-  free(results);
+  free(inputs_par);
+  free(results_par);
   free(exp_results);
 #if FSM_INPUTS_COAL_CHAR
   free(inputs_coal);

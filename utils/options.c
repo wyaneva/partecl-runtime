@@ -41,7 +41,7 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
                  int *do_choose_device, int *num_chunks, int *do_pad_test_cases,
-                 int *do_sort_test_cases, char **filename) {
+                 int *do_sort_test_cases, int *bucket_width, char **filename) {
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
@@ -111,6 +111,12 @@ int read_options(int argc, char **argv, int *num_test_cases,
       {
         if (!parseYNOption(argv, i, label, do_sort_test_cases))
           return FAIL;
+      }
+
+      // BUCKET WIDTH
+      else if (strcmp(label, "-bucketwidth") == 0 && bucket_width) // for grouping test cases based on size
+      {
+        *bucket_width = atoi(argv[i + 1]);
       }
 
       // OVERLAP

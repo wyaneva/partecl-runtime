@@ -139,7 +139,7 @@ kernel void execute_fsm(global struct partecl_input *inputs,
     (*output_ptr).w = output_temp;
 #else
     current_state = lookup_symbol(transitions, current_state, (*input_ptr),
-                                  input_length, *output_ptr);
+                                  input_length, output_ptr);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4

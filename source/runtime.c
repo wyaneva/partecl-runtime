@@ -46,6 +46,14 @@ void calculate_global_offset(size_t[3], int, int);
 void pad_test_case_number(cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
 
+void transpose_inputs_char(const struct partecl_input *inputs,
+                           char *inputs_coal, int max_input_size,
+                           int num_test_cases, int input_length);
+
+void transpose_results_back_char(const char *results_coal,
+                                 struct partecl_result *results,
+                                 int max_input_size, int num_test_cases);
+
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -174,29 +182,15 @@ int main(int argc, char **argv) {
          size_inputs_offset);
 #else
 #if FSM_INPUTS_COAL_CHAR
-  // transpose inputs for coalesced reading on gpu
-  // TODO: This might be a potentially automatically generated code, as it
-  // depends on the name of the variable in side the input structure
-  // i = which input inside the test case
-  // j = which test case
-  // k = which symbol inside the input
-  size_t size_inputs_coal =
-      sizeof(char) * PADDED_INPUT_ARRAY_SIZE * num_test_cases;
+  int max_input_size = PADDED_INPUT_ARRAY_SIZE;
+  size_t size_inputs_coal = sizeof(char) * max_input_size * num_test_cases;
+
   char *inputs_coal = (char *)malloc(size_inputs_coal);
-  int max_num_inputs =
-      PADDED_INPUT_ARRAY_SIZE /
-      input_length; // this is the maximum number of inputs per test case
-  for (int i = 0; i < max_num_inputs; i++) { // which input inside the test case
-    for (int j = 0; j < num_test_cases; j++) { // which test case
-      struct partecl_input current_input = inputs[j];
-      for (int k = 0; k < input_length; k++) {
-        size_t idx = (i * num_test_cases + j) * input_length + k;
-        char current_symbol = current_input.input_ptr[i * input_length + k];
-        inputs_coal[idx] = current_symbol;
-      }
-    }
-  }
   char *results_coal = (char *)malloc(size_inputs_coal);
+
+  transpose_inputs_char(inputs, inputs_coal, max_input_size, num_test_cases,
+                        input_length);
+
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
          size_inputs_coal);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
@@ -596,13 +590,8 @@ int main(int argc, char **argv) {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR
-    for (int i = 0; i < num_test_cases; i++) {
-      char* outputptr = results[i].output;
-      for (int j = i; j < PADDED_INPUT_ARRAY_SIZE*num_test_cases; j += num_test_cases) {
-        *outputptr = results_coal[j];
-        outputptr++;
-      }
-    }
+    int max_input_size = PADDED_INPUT_ARRAY_SIZE;
+    transpose_results_back_char(results_coal, results, max_input_size, num_test_cases);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
@@ -735,6 +724,44 @@ void calculate_global_offset(size_t goffset[3], int chunksize, int j) {
   goffset[2] = 0;
 }
 
+void transpose_inputs_char(const struct partecl_input *inputs, char *inputs_coal,
+                           int max_input_size, int num_test_cases,
+                           int input_length) {
+  // transpose inputs for coalesced reading on gpu
+  // TODO: This might be a potentially automatically generated code, as it
+  // depends on the name of the variable in side the input structure
+  // i = which input inside the test case
+  // j = which test case
+  // k = which symbol inside the input
+  int max_num_inputs =
+      max_input_size /
+      input_length; // this is the maximum number of inputs per test case
+  for (int i = 0; i < max_num_inputs; i++) { // which input inside the test case
+    for (int j = 0; j < num_test_cases; j++) { // which test case
+      struct partecl_input current_input = inputs[j];
+      for (int k = 0; k < input_length; k++) {
+        size_t idx = (i * num_test_cases + j) * input_length + k;
+        char current_symbol = current_input.input_ptr[i * input_length + k];
+        inputs_coal[idx] = current_symbol;
+      }
+    }
+  }
+}
+
+void transpose_results_back_char(const char *results_coal,
+                                 struct partecl_result *results,
+                                 int max_input_size, int num_test_cases) {
+  for (int i = 0; i < num_test_cases; i++) {
+    char *outputptr = results[i].output;
+    for (int j = i; j < max_input_size * num_test_cases;
+         j += num_test_cases) {
+      *outputptr = results_coal[j];
+      outputptr++;
+    }
+  }
+}
+
 void read_expected_results(struct partecl_result *results, int num_test_cases) {
+
   // TODO:
 }

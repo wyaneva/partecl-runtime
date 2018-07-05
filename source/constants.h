@@ -37,11 +37,11 @@
 //  They can ONLY be on when FSM_INPUTS_WITH_OFFSETS is NOT on
 
 #ifndef FSM_INPUTS_COAL_CHAR
-#define FSM_INPUTS_COAL_CHAR 1
+#define FSM_INPUTS_COAL_CHAR 0
 #endif
 
 #ifndef FSM_INPUTS_COAL_CHAR4
-#define FSM_INPUTS_COAL_CHAR4 0
+#define FSM_INPUTS_COAL_CHAR4 1
 #endif
 
 #if FSM_INPUTS_WITH_OFFSETS || FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
@@ -53,8 +53,10 @@
 #if FSM_INPUTS_COAL_CHAR4
 #define CHAR_N 4
 #define TEST_INPUTS_TYPE char4
+#define TEST_OUTPUTS_ATTR
 #else
 #define TEST_INPUTS_TYPE char
+#define TEST_OUTPUTS_ATTR global
 #endif
 
 /*

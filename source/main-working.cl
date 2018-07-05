@@ -20,7 +20,7 @@ int get_index(short current_state, char input) {
  * Returns the next state or -1 if transition isn't found.
  */
 short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
-                    char input, int length, global char *output_ptr) {
+                    char input, int length, TEST_OUTPUTS_ATTR char *output_ptr) {
 
   int index = get_index(current_state, input);
   transition trans = transitions[index];
@@ -99,47 +99,59 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // execute
   short current_state = starting_state;
 #if FSM_INPUTS_COAL_CHAR4
-  while ((*input_ptr).x != '\0') {
+  while (true) {
 #else
   while (*input_ptr != '\0') {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
+    char output_temp;
+    if ((*input_ptr).x == '\0') {
+      (*output_ptr).x = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).x,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).x = output_temp;
 
-    if (input_ptr[0].y == '\0') break;
+    if ((*input_ptr).y == '\0') {
+      (*output_ptr).y = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).y,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).y = output_temp;
 
-    if (input_ptr[0].z == '\0') break;
+    if ((*input_ptr).z == '\0') {
+      (*output_ptr).z = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).z,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).z = output_temp;
 
-    if (input_ptr[0].w == '\0') break;
+    if ((*input_ptr).w == '\0') {
+      (*output_ptr).w = '\0';
+      break;
+    }
     current_state = lookup_symbol(transitions, current_state, (*input_ptr).w,
-                                  input_length, output_ptr);
-    output_ptr += output_length;
+                                  input_length, &output_temp);
+    (*output_ptr).w = output_temp;
 #else
     current_state = lookup_symbol(transitions, current_state, (*input_ptr),
-                                  input_length, output_ptr);
-#if FSM_INPUTS_COAL_CHAR
-    output_ptr += output_length * num_test_cases;
-#else
-    output_ptr += output_length;
-#endif
-
+                                  input_length, *output_ptr);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
     input_ptr += input_length * num_test_cases;
+    output_ptr += output_length * num_test_cases;
 #else
     input_ptr += input_length;
+    output_ptr += output_length;
 #endif
   }
 
+#if !FSM_INPUTS_COAL_CHAR4
   *output_ptr ='\0';
+#endif
 }

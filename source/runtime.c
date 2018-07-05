@@ -594,9 +594,19 @@ int main(int argc, char **argv) {
 #if FSM_INPUTS_COAL_CHAR4
     for (int i = 0; i < num_test_cases; i++) {
       char *outputptr = results[i].output;
-      for (int j = i; j < padded_size * num_test_cases; j += num_test_cases) {
+      int reached_end = 0;
+      for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
+           j += num_test_cases) {
+        if (reached_end) {
+          break;
+        }
+
         for (int k = 0; k < CHAR_N; k++) {
-          *outputptr = results_coal_char4[j].s[0];
+          *outputptr = results_coal_char4[j].s[k];
+          if (*outputptr == '\0') {
+            reached_end = 1;
+            break;
+          }
           outputptr++;
         }
       }

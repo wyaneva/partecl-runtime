@@ -57,12 +57,13 @@ int main(int argc, char **argv) {
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
   int num_chunks = NUM_CHUNKS;
+  int do_pad_test_cases = DO_PAD_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &filename) == FAIL) {
+                   &do_pad_test_cases, &filename) == FAIL) {
     return 0;
   }
 
@@ -78,8 +79,10 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
 
-  // pad the test case number to nearest multiple of workgroup size
-  pad_test_case_number(&device, &num_test_cases);
+  if (do_pad_test_cases) {
+    // pad the test case number to nearest multiple of workgroup size
+    pad_test_case_number(&device, &num_test_cases);
+  }
   printf("Number of test cases: %d\n", num_test_cases);
 
   // check that the specified number of chunks divides the number of tests

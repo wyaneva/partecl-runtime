@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
-                   &num_runs, NULL, NULL, NULL, &filename) == FAIL)
+                   &num_runs, NULL, NULL, NULL, NULL, &filename) == FAIL)
     return 0;
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);

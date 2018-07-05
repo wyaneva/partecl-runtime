@@ -141,6 +141,15 @@ int main(int argc, char **argv) {
          size_transitions);
 
   // prepare inputs
+  if (do_sort_test_cases) {
+    // sort test cases
+    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL)
+    {
+      printf("Failed sorting the test cases.\n");
+      return -1;
+    }
+  }
+
   // TODO: put into char* arrays based on buckets
   size_t size_inputs = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
   char *inputs = (char *)malloc(size_inputs);
@@ -212,15 +221,6 @@ int main(int argc, char **argv) {
 #endif
 #endif
 #endif
-
-  if (do_sort_test_cases) {
-    // sort test cases
-    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL)
-    {
-      printf("Failed sorting the test cases.\n");
-      return -1;
-    }
-  }
 
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *

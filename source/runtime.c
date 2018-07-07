@@ -150,7 +150,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // TODO: put into char* arrays based on buckets
   size_t size_inputs = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
   char *inputs = (char *)malloc(size_inputs);
   char *results = (char *)malloc(size_inputs);
@@ -315,7 +314,6 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
-    // TODO create buffers based on buckets
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
     if (err != CL_SUCCESS)

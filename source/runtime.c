@@ -66,13 +66,12 @@ int main(int argc, char **argv) {
   int num_chunks = NUM_CHUNKS;
   int do_pad_test_cases = DO_PAD_TEST_CASES;
   int do_sort_test_cases = DO_SORT_TEST_CASES;
-  int bucket_width = PADDED_INPUT_ARRAY_SIZE; // for grouping test cases based on length
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks,
-                   &do_pad_test_cases, &do_sort_test_cases, &bucket_width, &filename) == FAIL) {
+                   &do_pad_test_cases, &do_sort_test_cases, &filename) == FAIL) {
     return 0;
   }
 

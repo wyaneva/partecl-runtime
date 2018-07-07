@@ -63,14 +63,14 @@ int main(int argc, char **argv) {
   int do_time = DO_TIME;
   int ldim0 = LDIM;
   int do_choose_device = DO_CHOOSE_DEVICE;
-  int num_chunks = NUM_CHUNKS;
+  int size_chunks = SIZE_CHUNKS;
   int do_pad_test_cases = DO_PAD_TEST_CASES;
   int do_sort_test_cases = DO_SORT_TEST_CASES;
   int num_test_cases = 1;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
-                   &num_runs, &ldim0, &do_choose_device, &num_chunks,
+                   &num_runs, &ldim0, &do_choose_device, &size_chunks,
                    &do_pad_test_cases, &do_sort_test_cases, &filename) == FAIL) {
     return 0;
   }
@@ -93,16 +93,6 @@ int main(int argc, char **argv) {
   }
   printf("Number of test cases: %d\n", num_test_cases);
 
-  // check that the specified number of chunks divides the number of tests
-  // equally
-  if (num_test_cases % num_chunks != 0) {
-    printf("Please provide a number of chunks which divides the padeed number "
-           "of test cases (%d) equally.\n",
-           num_test_cases);
-    return 0;
-  }
-  int chunksize = num_test_cases / num_chunks;
-
   // allocate CPU memory and generate test cases
   struct partecl_input *inputs_par;
   size_t size_inputs_par = sizeof(struct partecl_input) * num_test_cases;
@@ -117,11 +107,80 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  // sort the test cases
+  if (do_sort_test_cases || size_chunks > 0) {
+    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL) {
+      printf("Failed sorting the test cases.\n");
+      return -1;
+    }
+  }
+
+  // calculate the number of chunks
+  int num_chunks = 0;
+  size_chunks *= MB_TO_B; // turn into bytes
+  size_t size_inputs_total = 0;
+  if (size_chunks == 0) {
+    // we are not chunking - max padding case
+    num_chunks = 1;
+    size_inputs_total = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
+  } else {
+
+    // calculate the number of chunks and total size dynamically
+    int num_tests = 0;
+    int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
+    size_t size_current_chunk = 0;
+    int testid_start = 0;
+
+    for (int i = testid_start; i < num_test_cases; i++) {
+
+      int tc_length = strlen(inputs_par[i].input_ptr);
+      if (i == testid_start) {
+        padded_input_length = tc_length; // this is the max length in this chunk
+      }
+
+      int length_diff = padded_input_length - tc_length;
+      if (length_diff > 0) {
+        tc_length += length_diff;
+      }
+      size_current_chunk += sizeof(char) * tc_length;
+
+      if (size_current_chunk >=
+          (size_t)size_chunks) { // TODO: calculate within 15%
+
+        // we have enough test cases in this chunk
+        printf(
+            "chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
+            num_chunks, num_tests, size_current_chunk, padded_input_length);
+        num_chunks++;
+        num_tests = 0;
+        size_current_chunk = 0;
+        testid_start = i + 1;
+        break;
+      }
+
+      // add the current test case to the chunk
+      num_tests++;
+    }
+  }
+
+  // calculate arrays for chunks & allocate inputs and results
+  int num_tests_chunks[num_chunks];
+  size_t size_inputs_chunks[num_chunks];
+  size_t buf_offsets_chunks[num_chunks];
+  char* inputs_chunks[num_chunks];
+  char* results_chunks[num_chunks];
+
+  int testid_start = 0;
+  int current_buf_offset = 0;
+  for (int j = 0; j < num_chunks; j++) {
+
+  }
+
+  //TODO: remove chunksize
+  int chunksize = num_test_cases;
+
   // distribute the test cases in chunks
-  struct partecl_input *inputs_chunks[num_chunks];
-  size_t size_inputs_chunks = sizeof(struct partecl_input) * chunksize;
-  struct partecl_result *results_chunks[num_chunks];
-  size_t size_results_chunks = sizeof(struct partecl_result) * chunksize;
+  /*
   for (int i = 0; i < num_chunks; i++) {
     inputs_chunks[i] = (struct partecl_input *)malloc(size_inputs_chunks);
     for (int j = 0; j < chunksize; j++) {
@@ -129,16 +188,7 @@ int main(int argc, char **argv) {
     }
     results_chunks[i] = (struct partecl_result *)malloc(size_results_chunks);
   }
-
-  if (do_sort_test_cases) {
-    // sort test cases
-    for (int i = 0; i < num_chunks; i++) {
-      if (sort_test_cases_by_length(inputs_chunks[i], chunksize) == FAIL) {
-        printf("Failed sorting the test cases.\n");
-        return -1;
-      }
-    }
-  }
+  */
 
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
@@ -172,6 +222,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  /*
   size_t size_inputs = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
   char *inputs = (char *)malloc(size_inputs);
   char *results = (char *)malloc(size_inputs);
@@ -180,9 +231,10 @@ int main(int argc, char **argv) {
       inputs[i * PADDED_INPUT_ARRAY_SIZE + j] = inputs_par[i].input_ptr[j];
     }
   }
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs);
+  */
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_total);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs);
+         size_inputs_total);
 
 #if FSM_INPUTS_WITH_OFFSETS
   // calculate sizes
@@ -337,12 +389,12 @@ int main(int argc, char **argv) {
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
     cl_mem buf_inputs =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
     cl_mem buf_results =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs, NULL, &err);
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #endif
@@ -464,10 +516,9 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
-      err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE,
-          sizeof(char) * chunksize * j, size_inputs / num_chunks,
-          inputs + chunksize * j, 0, NULL, &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
+                                 buf_offsets_chunks[j], size_inputs_chunks[j],
+                                 inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
@@ -500,10 +551,10 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
-      err = clEnqueueReadBuffer(
-          queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
-          size_inputs / num_chunks, results + chunksize * j, 1,
-          &event_kernel[j], &event_results[j]);
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+                                buf_offsets_chunks[j], size_inputs_chunks[j],
+                                results_chunks[j], 1, &event_kernel[j],
+                                &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #endif
@@ -617,23 +668,15 @@ int main(int argc, char **argv) {
       }
     }
 #else
+    // TODO: put in a loop to copy
     for(int i = 0; i < num_test_cases; i++) {
       for(int j = 0; j < PADDED_INPUT_ARRAY_SIZE; j++) {
-        results_par[i].output[j] = results[i*PADDED_INPUT_ARRAY_SIZE + j];
+        results_par[i].output[j] = results_chunks[0][i*PADDED_INPUT_ARRAY_SIZE + j];
       }
     }
 #endif
 #endif
 #endif
-
-    // copy results to a struct
-    struct partecl_result *results = (struct partecl_result *)malloc(
-        sizeof(struct partecl_result) * num_test_cases);
-    for (int i = 0; i < num_chunks; i++) {
-      for (int j = 0; j < chunksize; j++) {
-        results[i * chunksize + j] = results_chunks[i][j];
-      }
-    }
 
     // check results
     if (do_compare_results)
@@ -650,14 +693,11 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clReleaseEvent (event_kernel) %d: %d\n", j, err);
     }
-    free(results);
   }
 
   free(inputs_par);
   free(results_par);
   free(exp_results);
-  free(inputs);
-  free(results);
   for (int i = 0; i < num_chunks; i++) {
     free(inputs_chunks[i]);
     free(results_chunks[i]);

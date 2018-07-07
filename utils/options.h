@@ -22,14 +22,15 @@
 #define NUM_RUNS 1
 #define DO_TIME 0
 #define DO_CHOOSE_DEVICE 0
-#define NUM_CHUNKS 1
+#define SIZE_CHUNKS 0 // in MB
 #define LDIM 0
 #define DO_PAD_TEST_CASES 1
 #define DO_SORT_TEST_CASES 0
+#define MB_TO_B 1048576
 
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *do_overlap, int *do_pad_test_cases,
+                 int *do_choose_device, int *size_chunks, int *do_pad_test_cases,
                  int *do_sort_test_cases, char **filename);
 
 #endif

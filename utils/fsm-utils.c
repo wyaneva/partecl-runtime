@@ -107,11 +107,11 @@ static int test_case_length(struct partecl_input input) {
   return strlen(input.input_ptr);
 }
 
-static int min(struct partecl_input x, struct partecl_input y) {
+static int max(struct partecl_input x, struct partecl_input y) {
   int xl = test_case_length(x);
   int yl = test_case_length(y);
 
-  if (xl < yl) {
+  if (xl >= yl) {
     return xl;
   } else {
     return yl;
@@ -142,7 +142,7 @@ static void merge_helper(struct partecl_input *inputs, int left, int right,
        * use take the element from the left array */
       if (l < left + midpoint_distance &&
           (r == right ||
-           min(inputs[l], inputs[r]) == test_case_length(inputs[l]))) {
+           max(inputs[l], inputs[r]) == test_case_length(inputs[l]))) {
         temp[i] = inputs[l];
         l++;
       } else {

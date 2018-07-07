@@ -40,7 +40,7 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 // int* num_chunks - from gpu code
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *num_chunks, int *do_pad_test_cases,
+                 int *do_choose_device, int *size_chunks, int *do_pad_test_cases,
                  int *do_sort_test_cases, char **filename) {
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
@@ -113,12 +113,12 @@ int read_options(int argc, char **argv, int *num_test_cases,
           return FAIL;
       }
 
-      // OVERLAP
-      else if (strcmp(label, "-chunks") == 0 && num_chunks) {
-        *num_chunks = atoi(argv[i + 1]);
-        if (*num_chunks < 1) {
+      // OVERLAP - CHUNK SIZE IN MB
+      else if (strcmp(label, "-chunks") == 0 && size_chunks) {
+        *size_chunks = atoi(argv[i + 1]);
+        if (*size_chunks < 1) {
           printf(
-              "Please, provide a number of overlapping input chunks >= 1.\n");
+              "Please, provide a size for overlapping chunks >= 1 (in MB).\n");
           return FAIL;
         }
       } else {

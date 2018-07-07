@@ -28,7 +28,7 @@
 
 // FSM_INPUTS_WITH_OFFSETS toggles dense input representation
 #ifndef FSM_INPUTS_WITH_OFFSETS
-#define FSM_INPUTS_WITH_OFFSETS 1
+#define FSM_INPUTS_WITH_OFFSETS 0
 #endif
 
 //  FSM_INPUTS toggles transposing data for memory coalescing

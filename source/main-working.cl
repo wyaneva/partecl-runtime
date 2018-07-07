@@ -56,6 +56,7 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 #endif
 
   int idx = get_global_id(0);
+  int num_threads = get_global_size(0);
 
   // FSM
 #if FSM_LOCAL_MEMORY
@@ -137,8 +138,8 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-    input_ptr += input_length * num_test_cases;
-    output_ptr += output_length * num_test_cases;
+    input_ptr += input_length * num_threads;
+    output_ptr += output_length * num_threads;
 #else
     input_ptr += input_length;
     output_ptr += output_length;

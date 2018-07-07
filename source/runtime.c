@@ -53,6 +53,11 @@ void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
                                  int max_input_size, int num_test_cases);
 
+void calculate_chunk_padding_and_size(const struct partecl_input *inputs_par,
+                                      int test_id, int testid_start,
+                                      int *padded_input_length,
+                                      size_t *size_chunk);
+
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -117,14 +122,17 @@ int main(int argc, char **argv) {
 
   // calculate the number of chunks
   int num_chunks = 0;
-  size_chunks *= MB_TO_B; // turn into bytes
+  size_chunks *= KB_TO_B; // turn into bytes
   size_t size_inputs_total = 0;
+
   if (size_chunks == 0) {
+
     // we are not chunking - max padding case
     num_chunks = 1;
     size_inputs_total = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
   } else {
 
+    // we are chunking
     // calculate the number of chunks and total size dynamically
     int num_tests = 0;
     int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
@@ -133,16 +141,10 @@ int main(int argc, char **argv) {
 
     for (int i = testid_start; i < num_test_cases; i++) {
 
-      int tc_length = strlen(inputs_par[i].input_ptr);
-      if (i == testid_start) {
-        padded_input_length = tc_length; // this is the max length in this chunk
-      }
+      calculate_chunk_padding_and_size(inputs_par, i, testid_start, &padded_input_length, &size_current_chunk);
 
-      int length_diff = padded_input_length - tc_length;
-      if (length_diff > 0) {
-        tc_length += length_diff;
-      }
-      size_current_chunk += sizeof(char) * tc_length;
+      // add the current test case to the chunk
+      num_tests++;
 
       if (size_current_chunk >=
           (size_t)size_chunks) { // TODO: calculate within 15%
@@ -152,14 +154,29 @@ int main(int argc, char **argv) {
             "chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
             num_chunks, num_tests, size_current_chunk, padded_input_length);
         num_chunks++;
+        size_inputs_total += size_current_chunk;
         num_tests = 0;
         size_current_chunk = 0;
         testid_start = i + 1;
-        break;
+        continue;
       }
+    }
 
-      // add the current test case to the chunk
-      num_tests++;
+    int num_remaining_tests = num_test_cases - testid_start;
+    if (num_remaining_tests > 0) {
+      size_current_chunk = 0;
+
+      // calculate the size of the last chunk
+      for (int i = testid_start; i < num_test_cases; i++) {
+
+        calculate_chunk_padding_and_size(inputs_par, i, testid_start,
+                                         &padded_input_length,
+                                         &size_current_chunk);
+      }
+      printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
+             num_chunks, num_tests, size_current_chunk, padded_input_length);
+      num_chunks++;
+      size_inputs_total += size_current_chunk;
     }
   }
 
@@ -816,6 +833,23 @@ void transpose_results_back_char(const char *results_coal,
       outputptr++;
     }
   }
+}
+
+void calculate_chunk_padding_and_size(const struct partecl_input *inputs_par,
+                                      int test_id, int testid_start,
+                                      int *padded_input_length,
+                                      size_t *size_chunk) {
+  int tc_length = strlen(inputs_par[test_id].input_ptr);
+  if (test_id == testid_start) {
+    *padded_input_length =
+        tc_length + 1; // this is the max length in this chunk
+  }
+
+  int length_diff = *padded_input_length - tc_length;
+  if (length_diff > 0) {
+    tc_length += length_diff;
+  }
+  *size_chunk += sizeof(char) * tc_length;
 }
 
 void read_expected_results(struct partecl_result *results, int num_test_cases) {

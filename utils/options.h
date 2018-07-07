@@ -22,11 +22,11 @@
 #define NUM_RUNS 1
 #define DO_TIME 0
 #define DO_CHOOSE_DEVICE 0
-#define SIZE_CHUNKS 0 // in MB
+#define SIZE_CHUNKS 0 // in KB
 #define LDIM 0
 #define DO_PAD_TEST_CASES 1
 #define DO_SORT_TEST_CASES 0
-#define MB_TO_B 1048576
+#define KB_TO_B 1024
 
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,

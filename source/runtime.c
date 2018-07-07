@@ -53,10 +53,9 @@ void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
                                  int max_input_size, int num_test_cases);
 
-void calculate_chunk_padding_and_size(const struct partecl_input *inputs_par,
-                                      int test_id, int testid_start,
-                                      int *padded_input_length,
-                                      size_t *size_chunk);
+void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
+                             const struct partecl_input *inputs_par,
+                             const int num_test_cases, const int size_chunks);
 
 int main(int argc, char **argv) {
 
@@ -134,50 +133,7 @@ int main(int argc, char **argv) {
 
     // we are chunking
     // calculate the number of chunks and total size dynamically
-    int num_tests = 0;
-    int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
-    size_t size_current_chunk = 0;
-    int testid_start = 0;
-
-    for (int i = testid_start; i < num_test_cases; i++) {
-
-      calculate_chunk_padding_and_size(inputs_par, i, testid_start, &padded_input_length, &size_current_chunk);
-
-      // add the current test case to the chunk
-      num_tests++;
-
-      if (size_current_chunk >=
-          (size_t)size_chunks) { // TODO: calculate within 15%
-
-        // we have enough test cases in this chunk
-        printf(
-            "chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-            num_chunks, num_tests, size_current_chunk, padded_input_length);
-        num_chunks++;
-        size_inputs_total += size_current_chunk;
-        num_tests = 0;
-        size_current_chunk = 0;
-        testid_start = i + 1;
-        continue;
-      }
-    }
-
-    int num_remaining_tests = num_test_cases - testid_start;
-    if (num_remaining_tests > 0) {
-      size_current_chunk = 0;
-
-      // calculate the size of the last chunk
-      for (int i = testid_start; i < num_test_cases; i++) {
-
-        calculate_chunk_padding_and_size(inputs_par, i, testid_start,
-                                         &padded_input_length,
-                                         &size_current_chunk);
-      }
-      printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-             num_chunks, num_tests, size_current_chunk, padded_input_length);
-      num_chunks++;
-      size_inputs_total += size_current_chunk;
-    }
+    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par, num_test_cases, size_chunks);
   }
 
   // calculate arrays for chunks & allocate inputs and results
@@ -850,6 +806,55 @@ void calculate_chunk_padding_and_size(const struct partecl_input *inputs_par,
     tc_length += length_diff;
   }
   *size_chunk += sizeof(char) * tc_length;
+}
+
+void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
+                             const struct partecl_input *inputs_par,
+                             const int num_test_cases, const int size_chunks) {
+  int num_tests = 0;
+  int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
+  size_t size_current_chunk = 0;
+  int testid_start = 0;
+
+  for (int i = testid_start; i < num_test_cases; i++) {
+
+    calculate_chunk_padding_and_size(inputs_par, i, testid_start,
+                                     &padded_input_length, &size_current_chunk);
+
+    // add the current test case to the chunk
+    num_tests++;
+
+    if (size_current_chunk >=
+        (size_t)size_chunks) { // TODO: calculate within 15%
+
+      // we have enough test cases in this chunk
+      printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
+             *num_chunks, num_tests, size_current_chunk, padded_input_length);
+      (*num_chunks)++;
+      *size_inputs_total += size_current_chunk;
+      num_tests = 0;
+      size_current_chunk = 0;
+      testid_start = i + 1;
+    }
+  }
+
+  // handle remaining tests
+  int num_remaining_tests = num_test_cases - testid_start;
+  if (num_remaining_tests > 0) {
+    size_current_chunk = 0;
+
+    // calculate the size of the last chunk
+    for (int i = testid_start; i < num_test_cases; i++) {
+
+      calculate_chunk_padding_and_size(inputs_par, i, testid_start,
+                                       &padded_input_length,
+                                       &size_current_chunk);
+    }
+    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
+           *num_chunks, num_tests, size_current_chunk, padded_input_length);
+    (*num_chunks)++;
+    *size_inputs_total += size_current_chunk;
+  }
 }
 
 void read_expected_results(struct partecl_result *results, int num_test_cases) {

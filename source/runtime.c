@@ -204,26 +204,6 @@ int main(int argc, char **argv) {
   printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
          size_transitions);
 
-  // prepare inputs
-  if (do_sort_test_cases) {
-    // sort test cases
-    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL)
-    {
-      printf("Failed sorting the test cases.\n");
-      return -1;
-    }
-  }
-
-  /*
-  size_t size_inputs = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
-  char *inputs = (char *)malloc(size_inputs);
-  char *results = (char *)malloc(size_inputs);
-  for (int i = 0; i < num_test_cases; i++) {
-    for (int j = 0; j < PADDED_INPUT_ARRAY_SIZE; j++) {
-      inputs[i * PADDED_INPUT_ARRAY_SIZE + j] = inputs_par[i].input_ptr[j];
-    }
-  }
-  */
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_total);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_total);
@@ -251,9 +231,11 @@ int main(int argc, char **argv) {
 #else
 #if FSM_INPUTS_COAL_CHAR
 
-  int max_input_size = PADDED_INPUT_ARRAY_SIZE;
-  transpose_inputs_char(inputs, max_input_size, num_test_cases,
-                        input_length);
+  for (int j = 0; j < num_chunks; j++) {
+    int max_input_size = padded_input_size_chunks[j];
+    transpose_inputs_char(inputs_chunks[j], max_input_size, num_tests_chunks[j],
+                          input_length);
+  }
 
 #else
 #if FSM_INPUTS_COAL_CHAR4
@@ -487,26 +469,23 @@ int main(int argc, char **argv) {
     for (int j = 0; j < num_chunks; j++) {
       // transfer input to device
 #if FSM_INPUTS_WITH_OFFSETS
-      err = clEnqueueWriteBuffer(
-          queue_inputs, buf_offsets, CL_FALSE, sizeof(int) * chunksize * j,
-          sizeof(int) * num_test_cases / num_chunks, offsets + chunksize * j, 0,
-          NULL, &event_offsets[j]);
+      err = clEnqueueWriteBuffer(queue_inputs, buf_offsets, CL_FALSE, 0,
+                                 sizeof(int) * num_test_cases, offsets, 0, NULL,
+                                 &event_offsets[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
-      err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE, sizeof(char) * chunksize * j,
-          size_inputs_offset / num_chunks, inputs_offset + chunksize * j, 1,
-          &event_offsets[j], &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE, 0,
+                                 size_inputs_offset, inputs_offset, 1,
+                                 &event_offsets[j], &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
 #else
 #if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueWriteBuffer(
-          queue_inputs, buf_inputs, CL_FALSE, sizeof(cl_char4) * chunksize * j,
-          size_inputs_coal_char4 / num_chunks,
-          inputs_coal_char4 + chunksize * j, 0, NULL, &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE, 0,
+                                 size_inputs_coal_char4, inputs_coal_char4, 0,
+                                 NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
@@ -529,18 +508,15 @@ int main(int argc, char **argv) {
 
         // transfer results back
 #if FSM_INPUTS_WITH_OFFSETS
-      err = clEnqueueReadBuffer(
-          queue_results, buf_results, CL_FALSE, sizeof(char) * chunksize * j,
-          size_inputs_offset / num_chunks, results_offset + chunksize * j, 1,
-          &event_kernel[j], &event_results[j]);
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE, 0,
+                                size_inputs_offset, results_offset, 1,
+                                &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
-                                sizeof(cl_char4) * chunksize * j,
-                                size_inputs_coal_char4 / num_chunks,
-                                results_coal_char4 + chunksize * j, 1,
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE, 0,
+                                size_inputs_coal_char4, results_coal_char4, 1,
                                 &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
@@ -623,23 +599,16 @@ int main(int argc, char **argv) {
       }
     }
 
-#if FSM_INPUTS_WITH_OFFSETS
-    /*
-    // TODO: need to implement properly for chunking
-    // results_offset
-    // total_number_of_inputs
-    // offsets
-    for (int i = 0; i < num_chunks; i++) {
-      results_with_offsets_to_partecl_results(results_offset, results_chunks[i],
-                                              total_number_of_inputs, offsets,
-                                              chunksize);
-    }
-    */
-    results_with_offsets_to_partecl_results(results_offset, results_par, total_number_of_inputs, offsets, num_test_cases);
-#else
 #if FSM_INPUTS_COAL_CHAR
-    int max_input_size = PADDED_INPUT_ARRAY_SIZE;
-    transpose_results_back_char(results, results_par, max_input_size, num_test_cases);
+    for (int j = 0; j < num_chunks; j++) {
+      int max_input_size = padded_input_size_chunks[j];
+      transpose_inputs_char(results_chunks[j], max_input_size,
+                            num_tests_chunks[j], 0);
+    }
+#endif
+
+#if FSM_INPUTS_WITH_OFFSETS
+    results_with_offsets_to_partecl_results(results_offset, results_par, total_number_of_inputs, offsets, num_test_cases);
 #else
 #if FSM_INPUTS_COAL_CHAR4
     for (int i = 0; i < num_test_cases; i++) {
@@ -674,7 +643,6 @@ int main(int argc, char **argv) {
         results_parptr++;
       }
     }
-#endif
 #endif
 #endif
 
@@ -805,6 +773,7 @@ void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
   free(inputs_temp);
 }
 
+// TODO: This is obsolete
 void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
                                  int max_input_size, int num_test_cases) {

@@ -55,7 +55,10 @@ void transpose_results_back_char(const char *results_coal,
 
 void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const struct partecl_input *inputs_par,
-                             const int num_test_cases, const int size_chunks);
+                             const int num_test_cases, const int size_chunks,
+                             int *padded_input_chunks, int *inputs_chunks,
+                             size_t *size_inputs_chunks,
+                             size_t *buf_offsets_chunks);
 
 int main(int argc, char **argv) {
 
@@ -133,18 +136,20 @@ int main(int argc, char **argv) {
 
     // we are chunking
     // calculate the number of chunks and total size dynamically
-    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par, num_test_cases, size_chunks);
+    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
+                            num_test_cases, size_chunks, NULL, NULL, NULL,
+                            NULL);
   }
 
   // calculate arrays for chunks & allocate inputs and results
   int num_tests_chunks[num_chunks];
   size_t size_inputs_chunks[num_chunks];
   size_t buf_offsets_chunks[num_chunks];
+  int padded_input_size_chunks[num_chunks];
+
   char* inputs_chunks[num_chunks];
   char* results_chunks[num_chunks];
 
-  int testid_start = 0;
-  int current_buf_offset = 0;
   for (int j = 0; j < num_chunks; j++) {
 
   }
@@ -808,12 +813,38 @@ void calculate_chunk_padding_and_size(const struct partecl_input *inputs_par,
   *size_chunk += sizeof(char) * tc_length;
 }
 
+void populate_chunk_arrays(int *padded_input_chunks, int *num_tests_chunks,
+                           size_t *size_inputs_chunks,
+                           size_t *buf_offsets_chunks, const int chunk_id,
+                           const int padded_input_length, const int num_tests,
+                           const size_t buf_offset, const size_t size_chunk) {
+  if (padded_input_chunks) {
+    padded_input_chunks[chunk_id] = padded_input_length;
+  }
+
+  if (num_tests_chunks) {
+    num_tests_chunks[chunk_id] = num_tests;
+  }
+
+  if (buf_offsets_chunks) {
+    buf_offsets_chunks[chunk_id] = buf_offset;
+  }
+
+  if (size_inputs_chunks) {
+    size_inputs_chunks[chunk_id] = size_chunk;
+  }
+}
+
 void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const struct partecl_input *inputs_par,
-                             const int num_test_cases, const int size_chunks) {
+                             const int num_test_cases, const int size_chunks,
+                             int *padded_input_chunks, int *num_tests_chunks,
+                             size_t *size_inputs_chunks,
+                             size_t *buf_offsets_chunks) {
   int num_tests = 0;
   int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
   size_t size_current_chunk = 0;
+  size_t current_buf_offset = 0;
   int testid_start = 0;
 
   for (int i = testid_start; i < num_test_cases; i++) {
@@ -830,10 +861,17 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
       // we have enough test cases in this chunk
       printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
              *num_chunks, num_tests, size_current_chunk, padded_input_length);
+
+      populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
+                            size_inputs_chunks, buf_offsets_chunks, *num_chunks,
+                            padded_input_length, num_tests, current_buf_offset,
+                            size_current_chunk);
       (*num_chunks)++;
       *size_inputs_total += size_current_chunk;
+
       num_tests = 0;
       size_current_chunk = 0;
+      current_buf_offset += size_current_chunk;
       testid_start = i + 1;
     }
   }
@@ -851,7 +889,14 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                                        &size_current_chunk);
     }
     printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-           *num_chunks, num_tests, size_current_chunk, padded_input_length);
+           *num_chunks, num_remaining_tests, size_current_chunk,
+           padded_input_length);
+
+    populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
+                          size_inputs_chunks, buf_offsets_chunks, *num_chunks,
+                          padded_input_length, num_remaining_tests,
+                          current_buf_offset, size_current_chunk);
+
     (*num_chunks)++;
     *size_inputs_total += size_current_chunk;
   }

@@ -68,8 +68,10 @@ kernel void execute_fsm(global struct partecl_input *inputs,
   // FSM
 #if FSM_LOCAL_MEMORY
   // copy FSM into local memory
+  int idx_local = get_local_id(0);
+  size_t local_size = get_local_size(0);
   local transition transitions_local[NUM_TRANSITIONS_KERNEL];
-  for (int i = 0; i < NUM_TRANSITIONS_KERNEL; i++) {
+  for (int i = idx_local; i < NUM_TRANSITIONS_KERNEL; i += local_size) {
     transitions_local[i] = transitions_knl[i];
   }
   FSM_ATTR transition *transitions = transitions_local;

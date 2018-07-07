@@ -141,32 +141,46 @@ int main(int argc, char **argv) {
                             NULL);
   }
 
-  // calculate arrays for chunks & allocate inputs and results
+  // calculate arrays for chunks 
   int num_tests_chunks[num_chunks];
   size_t size_inputs_chunks[num_chunks];
   size_t buf_offsets_chunks[num_chunks];
   int padded_input_size_chunks[num_chunks];
 
+  if (num_chunks == 1) {
+    num_tests_chunks[0] = num_test_cases;
+    size_inputs_chunks[0] = size_inputs_total;
+    buf_offsets_chunks[0] = 0;
+    padded_input_size_chunks[0] = PADDED_INPUT_ARRAY_SIZE;
+  } else {
+
+    // calculating again so set to 0
+    num_chunks = 0;
+    size_inputs_total = 0;
+    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
+                            num_test_cases, size_chunks,
+                            padded_input_size_chunks, num_tests_chunks,
+                            size_inputs_chunks, buf_offsets_chunks);
+  }
+
+  //allocate & populate inputs and results
   char* inputs_chunks[num_chunks];
   char* results_chunks[num_chunks];
 
+  int testid_start = 0;
   for (int j = 0; j < num_chunks; j++) {
-
-  }
-
-  //TODO: remove chunksize
-  int chunksize = num_test_cases;
-
-  // distribute the test cases in chunks
-  /*
-  for (int i = 0; i < num_chunks; i++) {
-    inputs_chunks[i] = (struct partecl_input *)malloc(size_inputs_chunks);
-    for (int j = 0; j < chunksize; j++) {
-      inputs_chunks[i][j] = inputs_par[i * chunksize + j];
+    inputs_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
+    int num_tests = num_tests_chunks[j];
+    for (int i = testid_start; i < testid_start + num_tests; i++) {
+      int padded_size = padded_input_size_chunks[j];
+      for (int k = 0; k < padded_size; k++) {
+        int idx = (i-testid_start)*padded_size + k;
+        inputs_chunks[j][idx] = inputs_par[i].input_ptr[k];
+      }
     }
-    results_chunks[i] = (struct partecl_result *)malloc(size_results_chunks);
+    testid_start += num_tests;
+    results_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
   }
-  */
 
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
@@ -280,9 +294,11 @@ int main(int argc, char **argv) {
     read_expected_results(exp_results, num_test_cases);
 
   // clalculate dimensions
-  size_t gdim[3], ldim[3]; // assuming three dimensions
-  calculate_dimensions(&device, gdim, ldim, chunksize, ldim0);
-  printf("LDIM = %zd, chunks = %d\n", ldim[0], num_chunks);
+  size_t gdim[num_chunks][3], ldim[num_chunks][3]; // assuming three dimensions
+  for (int j = 0; j < num_chunks; j++) {
+    calculate_dimensions(&device, gdim[j], ldim[j], num_tests_chunks[j], ldim0);
+    printf("LDIM = %zd, chunks = %d\n", ldim[j][0], num_chunks);
+  }
 
   // create kernel
   char *knl_text = read_file(GPU_SOURCE);
@@ -503,10 +519,10 @@ int main(int argc, char **argv) {
 #endif
 
       // launch kernel
-      size_t goffset[3];
-      calculate_global_offset(goffset, chunksize, j);
+      size_t goffset[3] = {0, 0, 0};
+      //calculate_global_offset(goffset, chunksize, j);
 
-      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim, ldim, 1,
+      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,
                                    &event_inputs[j], &event_kernel[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
@@ -646,10 +662,16 @@ int main(int argc, char **argv) {
       }
     }
 #else
-    // TODO: put in a loop to copy
-    for(int i = 0; i < num_test_cases; i++) {
-      for(int j = 0; j < PADDED_INPUT_ARRAY_SIZE; j++) {
-        results_par[i].output[j] = results_chunks[0][i*PADDED_INPUT_ARRAY_SIZE + j];
+    struct partecl_result *results_parptr = results_par;
+    for(int j = 0; j < num_chunks; j++) {
+      char* resultsptr = results_chunks[j];
+      for(int i = 0; i < num_tests_chunks[j]; i++) {
+        int padded_size = padded_input_size_chunks[j];
+        for(int k = 0; k < padded_size; k++) {
+          (*results_parptr).output[k] = *resultsptr;
+          resultsptr++;
+        }
+        results_parptr++;
       }
     }
 #endif

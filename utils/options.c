@@ -45,7 +45,7 @@ int read_options(int argc, char **argv, int *num_test_cases,
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
-           "(-chunks ..number..) \n");
+           "(-chunksize ..number..) \n");
     return FAIL;
   }
   *num_test_cases = atoi(argv[1]);
@@ -114,7 +114,7 @@ int read_options(int argc, char **argv, int *num_test_cases,
       }
 
       // OVERLAP - CHUNK SIZE IN MB
-      else if (strcmp(label, "-chunks") == 0 && size_chunks) {
+      else if (strcmp(label, "-chunksize") == 0 && size_chunks) {
         *size_chunks = atoi(argv[i + 1]);
         if (*size_chunks < 1) {
           printf(

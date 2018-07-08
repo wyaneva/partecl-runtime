@@ -599,16 +599,19 @@ int main(int argc, char **argv) {
       }
     }
 
-#if FSM_INPUTS_COAL_CHAR
-    for (int j = 0; j < num_chunks; j++) {
-      int max_input_size = padded_input_size_chunks[j];
-      transpose_inputs_char(results_chunks[j], max_input_size,
-                            num_tests_chunks[j], 0);
-    }
-#endif
-
 #if FSM_INPUTS_WITH_OFFSETS
     results_with_offsets_to_partecl_results(results_offset, results_par, total_number_of_inputs, offsets, num_test_cases);
+#else
+#if FSM_INPUTS_COAL_CHAR
+    struct partecl_result *results_parptr = results_par;
+    for (int j = 0; j < num_chunks; j++) {
+
+      int max_input_size = padded_input_size_chunks[j];
+      int num_tests = num_tests_chunks[j];
+      transpose_results_back_char(results_chunks[j], results_parptr,
+                                  max_input_size, num_tests);
+      results_parptr += num_tests;
+    }
 #else
 #if FSM_INPUTS_COAL_CHAR4
     for (int i = 0; i < num_test_cases; i++) {
@@ -643,6 +646,7 @@ int main(int argc, char **argv) {
         results_parptr++;
       }
     }
+#endif
 #endif
 #endif
 
@@ -773,7 +777,6 @@ void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
   free(inputs_temp);
 }
 
-// TODO: This is obsolete
 void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
                                  int max_input_size, int num_test_cases) {

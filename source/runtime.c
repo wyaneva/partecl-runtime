@@ -183,6 +183,11 @@ int main(int argc, char **argv) {
     results_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
   }
 
+  for (int j = 0; j < num_chunks; j++) {
+    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
+           j, num_tests_chunks[j], size_inputs_chunks[j], padded_input_size_chunks[j]);
+  }
+
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
   int starting_state;
@@ -544,13 +549,13 @@ int main(int argc, char **argv) {
     }
 
     // finish the kernels
-    err = clFinish(queue_inputs);
+    err = clFlush(queue_inputs);
     if (err != CL_SUCCESS)
-      printf("error: clFinish queue_inputs: %d\n", err);
+      printf("error: clFlush queue_inputs: %d\n", err);
 
-    err = clFinish(queue_kernel);
+    err = clFlush(queue_kernel);
     if (err != CL_SUCCESS)
-      printf("error: clFinish queue_kernel: %d\n", err);
+      printf("error: clFlush queue_kernel: %d\n", err);
 
     err = clFinish(queue_results);
     if (err != CL_SUCCESS)
@@ -870,9 +875,6 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
         continue;
       }
 
-      printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-             *num_chunks, num_tests, size_current_chunk, padded_input_length);
-
       populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
                             size_inputs_chunks, buf_offsets_chunks, *num_chunks,
                             padded_input_length, num_tests, current_buf_offset,
@@ -899,9 +901,6 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                                        &padded_input_length,
                                        &size_current_chunk);
     }
-    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-           *num_chunks, num_remaining_tests, size_current_chunk,
-           padded_input_length);
 
     populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
                           size_inputs_chunks, buf_offsets_chunks, *num_chunks,

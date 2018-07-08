@@ -498,12 +498,12 @@ int main(int argc, char **argv) {
         printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 
-      int num_waits = j == 0 ? 0 : 1;
-      cl_event *wait_event = j == 0 ? NULL : &event_results[j - 1];
+      //int num_waits = j == 0 ? 0 : 1;
+      //cl_event *wait_event = j == 0 ? NULL : &event_results[j - 1];
 
       err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
-                                 inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
+                                 inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif

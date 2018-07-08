@@ -491,10 +491,12 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
+#if !FSM_INPUTS_COAL_CHAR
       // set the padded size argument for the kernel
       err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
       if(err != CL_SUCCESS)
         printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
+#endif
 
       int num_waits = j == 0 ? 0 : 1;
       cl_event *wait_event = j == 0 ? NULL : &event_results[j - 1];

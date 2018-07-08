@@ -116,9 +116,9 @@ int read_options(int argc, char **argv, int *num_test_cases,
       // OVERLAP - CHUNK SIZE IN MB
       else if (strcmp(label, "-chunksize") == 0 && size_chunks) {
         *size_chunks = atoi(argv[i + 1]);
-        if (*size_chunks < 1) {
+        if (*size_chunks < 0) {
           printf(
-              "Please, provide a size for overlapping chunks >= 1 (in MB).\n");
+              "Please, provide a size for overlapping chunks >= 0 (in MB).\n");
           return FAIL;
         }
       } else {

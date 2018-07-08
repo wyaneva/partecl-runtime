@@ -489,7 +489,7 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
-      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
+      err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_TRUE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
                                  inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
@@ -521,7 +521,7 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
-      err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
+      err = clEnqueueReadBuffer(queue_results, buf_results, CL_TRUE,
                                 buf_offsets_chunks[j], size_inputs_chunks[j],
                                 results_chunks[j], 1, &event_kernel[j],
                                 &event_results[j]);

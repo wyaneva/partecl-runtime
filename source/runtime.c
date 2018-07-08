@@ -503,12 +503,12 @@ int main(int argc, char **argv) {
         printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 
-      //int num_waits = j == 0 ? 0 : 1;
-      //cl_event *wait_event = j == 0 ? NULL : &event_results[j - 1];
+      int num_waits = 0; //j == 0 ? 0 : 1;
+      cl_event *wait_event = NULL; //j == 0 ? NULL : &event_results[j - 1];
 
       err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
-                                 inputs_chunks[j], 0, NULL, &event_inputs[j]);
+                                 inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
@@ -588,19 +588,19 @@ int main(int argc, char **argv) {
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_inputs = (double)(ev_end_time - ev_start_time) / 1000000;
+      trans_inputs += (double)(ev_end_time - ev_start_time) / 1000000;
 
       clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_results = (double)(ev_end_time - ev_start_time) / 1000000;
+      trans_results += (double)(ev_end_time - ev_start_time) / 1000000;
 
       clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
+      time_gpu += (double)(ev_end_time - ev_start_time) / 1000000;
 
       if (do_time) {
         if(j == num_chunks - 1) {
@@ -608,9 +608,11 @@ int main(int argc, char **argv) {
           printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
                end_to_end);
         }
+        /*
         else {
           printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
         }
+        */
       }
     }
 

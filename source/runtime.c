@@ -400,6 +400,7 @@ int main(int argc, char **argv) {
 #define KNL_ARG_INPUT_LENGTH 4
 #define KNL_ARG_OUTPUT_LENGTH 5
 #define KNL_ARG_NUM_TEST_CASES 6
+#define KNL_ARG_PADDED_INPUT_SIZE 7
 #endif
 
     // add kernel arguments
@@ -494,6 +495,11 @@ int main(int argc, char **argv) {
                                  inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+      // set the padded size argument for the kernel
+      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 #endif
 

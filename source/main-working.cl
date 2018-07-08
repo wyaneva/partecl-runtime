@@ -48,11 +48,19 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
+#if FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
+#else
+kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
+                        global TEST_INPUTS_TYPE *results,
+                        FSM_ATTR_KNL transition *transitions_knl,
+                        int starting_state, int input_length, int output_length,
+                        int num_test_cases, int padded_input_size) {
+#endif
 #endif
 
   int idx = get_global_id(0);
@@ -84,8 +92,9 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
   global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #else
-  global TEST_INPUTS_TYPE *input_ptr = &inputs[idx*PADDED_INPUT_ARRAY_SIZE];
-  global TEST_INPUTS_TYPE *output_ptr = &results[idx*PADDED_INPUT_ARRAY_SIZE];
+  int coal_idx = idx*padded_input_size;
+  global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
+  global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #endif
 
 #endif

@@ -43,7 +43,7 @@
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
-void pad_test_case_number(cl_device_id *, int *);
+void pad_test_case_number(const cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
 
 void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
@@ -58,7 +58,8 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const int num_test_cases, const int size_chunks,
                              int *padded_input_chunks, int *inputs_chunks,
                              size_t *size_inputs_chunks,
-                             size_t *buf_offsets_chunks);
+                             size_t *buf_offsets_chunks,
+                             const cl_device_id *device);
 
 int main(int argc, char **argv) {
 
@@ -137,8 +138,8 @@ int main(int argc, char **argv) {
     // we are chunking
     // calculate the number of chunks and total size dynamically
     calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
-                            num_test_cases, size_chunks, NULL, NULL, NULL,
-                            NULL);
+                            num_test_cases, size_chunks, NULL, NULL, NULL, NULL,
+                            &device);
   }
 
   // calculate arrays for chunks 
@@ -160,7 +161,7 @@ int main(int argc, char **argv) {
     calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
                             num_test_cases, size_chunks,
                             padded_input_size_chunks, num_tests_chunks,
-                            size_inputs_chunks, buf_offsets_chunks);
+                            size_inputs_chunks, buf_offsets_chunks, &device);
   }
 
   //allocate & populate inputs and results
@@ -688,7 +689,7 @@ int main(int argc, char **argv) {
 #endif
 }
 
-void pad_test_case_number(cl_device_id *device, int *num_test_cases) {
+void pad_test_case_number(const cl_device_id *device, int *num_test_cases) {
   // find out maximum dimensions for device
   cl_int err;
 
@@ -838,7 +839,7 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const int num_test_cases, const int size_chunks,
                              int *padded_input_chunks, int *num_tests_chunks,
                              size_t *size_inputs_chunks,
-                             size_t *buf_offsets_chunks) {
+                             size_t *buf_offsets_chunks, const cl_device_id *device) {
   int num_tests = 0;
   int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
   size_t size_current_chunk = 0;
@@ -853,10 +854,17 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
     // add the current test case to the chunk
     num_tests++;
 
-    if (size_current_chunk >=
-        (size_t)size_chunks) { // TODO: calculate within 15%
+    if (size_current_chunk >= (size_t)size_chunks) {
 
       // we have enough test cases in this chunk
+
+      // pad the number of test cases to be divisible by local workgroup size
+      int padded_num_tests = num_tests;
+      pad_test_case_number(device, &padded_num_tests);
+      if (padded_num_tests > num_tests) {
+        continue;
+      }
+
       printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
              *num_chunks, num_tests, size_current_chunk, padded_input_length);
 

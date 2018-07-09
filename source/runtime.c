@@ -347,6 +347,7 @@ int main(int argc, char **argv) {
     double end_to_end = 0.0;
     struct timespec ete_start, ete_end;
     cl_ulong ev_start_time, ev_end_time;
+    size_t goffset[3] = {0, 0, 0};
 
     // allocate device memory
 #if FSM_INPUTS_WITH_OFFSETS
@@ -468,7 +469,7 @@ int main(int argc, char **argv) {
 
     // transfer FSM to GPU only once
     cl_event event_fsm;
-    err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_TRUE, 0,
+    err = clEnqueueWriteBuffer(queue_inputs, buf_transitions, CL_FALSE, 0,
                                size_transitions, transitions, 0, NULL,
                                &event_fsm);
     if (err != CL_SUCCESS)
@@ -504,8 +505,8 @@ int main(int argc, char **argv) {
         printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 
-      int num_waits = 0; //j == 0 ? 0 : 1;
-      cl_event *wait_event = NULL; //j == 0 ? NULL : &event_results[j - 1];
+      int num_waits = j == 0 ? 1 : 0;
+      cl_event *wait_event = j == 0 ? &event_fsm : NULL;
 
       err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
@@ -516,7 +517,6 @@ int main(int argc, char **argv) {
 #endif
 
       // launch kernel
-      size_t goffset[3] = {0, 0, 0};
       //calculate_global_offset(goffset, chunksize, j);
 
       err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,

@@ -340,6 +340,7 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < num_runs; i++) {
     // timing variables
+    double trans_fsm = 0.0;
     double trans_inputs = 0.0;
     double trans_results = 0.0;
     double time_gpu = 0.0;
@@ -583,36 +584,40 @@ int main(int argc, char **argv) {
 #endif
 
     // gather performance data
+    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_START,
+                            sizeof(cl_ulong), &ev_start_time, NULL);
+    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_END,
+                            sizeof(cl_ulong), &ev_end_time, NULL);
+    trans_fsm = (double)(ev_end_time - ev_start_time) / 1000000;
+
     for (int j = 0; j < num_chunks; j++) {
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_inputs += (double)(ev_end_time - ev_start_time) / 1000000;
+      trans_inputs = (double)(ev_end_time - ev_start_time) / 1000000;
 
       clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_results += (double)(ev_end_time - ev_start_time) / 1000000;
+      trans_results = (double)(ev_end_time - ev_start_time) / 1000000;
 
       clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
-      time_gpu += (double)(ev_end_time - ev_start_time) / 1000000;
+      time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
 
       if (do_time) {
         if(j == num_chunks - 1) {
           end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
-          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
-               end_to_end);
+          printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
+               end_to_end, trans_fsm);
         }
-        /*
         else {
           printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
         }
-        */
       }
     }
 

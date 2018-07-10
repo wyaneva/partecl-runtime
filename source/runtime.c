@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
   // prepare inputs
   if (do_sort_test_cases) {
     // sort test cases
-    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL)
+    if (sort_test_cases_by_length(inputs_par, num_test_cases, SORT_ASCENDING) == FAIL)
     {
       printf("Failed sorting the test cases.\n");
       return -1;

@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 
   // sort the test cases
   if (do_sort_test_cases || size_chunks > 0) {
-    if (sort_test_cases_by_length(inputs_par, num_test_cases) == FAIL) {
+    if (sort_test_cases_by_length(inputs_par, num_test_cases, 0) == FAIL) {
       printf("Failed sorting the test cases.\n");
       return -1;
     }

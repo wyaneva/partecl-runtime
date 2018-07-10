@@ -60,6 +60,14 @@
 #endif
 
 /*
+ * Sorting toggles
+ */
+
+#ifndef SORT_ASCENDING
+#define SORT_ASCENDING 1
+#endif
+
+/*
  * FSM_OPTIMISE_CONST toggles optimisations
  *  1. FSM storage in constant & local memory where possible
  */

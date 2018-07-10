@@ -1,9 +1,9 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "../kernel-gen/structs.h"
 #include "../source/constants.h"
 #include "../utils/utils.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 void print_sanity_checks() {
   printf("SANITY CHECK!");
@@ -39,15 +39,18 @@ void print_sanity_checks() {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR && FSM_INPUTS_COAL_CHAR4
-  printf("ERROR! FSM_INPUTS_COAL_CHAR and FSM_INPUTS_COAL_CHAR4 cannot both be set.\n");
+  printf("ERROR! FSM_INPUTS_COAL_CHAR and FSM_INPUTS_COAL_CHAR4 cannot both be "
+         "set.\n");
 #endif
 
 #if FSM_INPUTS_WITH_OFFSETS && FSM_INPUTS_COAL_CHAR
-  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR cannot both be set.\n");
+  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR cannot both "
+         "be set.\n");
 #endif
 
 #if FSM_INPUTS_WITH_OFFSETS && FSM_INPUTS_COAL_CHAR4
-  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR4 cannot both be set.\n");
+  printf("ERROR! FSM_INPUTS_WITH_OFFSETS and FSM_INPUTS_COAL_CHAR4 cannot both "
+         "be set.\n");
 #endif
   printf("\n");
 }
@@ -66,8 +69,7 @@ void calculate_sizes_with_offset(int *total_number_of_inputs,
 }
 
 void partecl_input_to_input_with_offsets(const struct partecl_input *inputs,
-                                         char *inputs_offset,
-                                         int *offsets,
+                                         char *inputs_offset, int *offsets,
                                          const int num_test_cases) {
   // move inputs into one big array
   char *inputsptr = inputs_offset;
@@ -118,8 +120,28 @@ static int max(struct partecl_input x, struct partecl_input y) {
   }
 }
 
+static int min(struct partecl_input x, struct partecl_input y) {
+  int xl = test_case_length(x);
+  int yl = test_case_length(y);
+
+  if (xl < yl) {
+    return xl;
+  } else {
+    return yl;
+  }
+}
+
+static int compare(struct partecl_input x, struct partecl_input y,
+                   int is_ascendign) {
+  if (is_ascendign) {
+    return min(x, y);
+  } else {
+    return max(x, y);
+  }
+}
+
 static void merge_helper(struct partecl_input *inputs, int left, int right,
-                         struct partecl_input *temp) {
+                         struct partecl_input *temp, int is_ascending) {
   /* base case: one element */
   if (right == left + 1) {
     return;
@@ -131,8 +153,8 @@ static void merge_helper(struct partecl_input *inputs, int left, int right,
     int l = left, r = left + midpoint_distance;
 
     /* sort each subarray */
-    merge_helper(inputs, left, left + midpoint_distance, temp);
-    merge_helper(inputs, left + midpoint_distance, right, temp);
+    merge_helper(inputs, left, left + midpoint_distance, temp, is_ascending);
+    merge_helper(inputs, left + midpoint_distance, right, temp, is_ascending);
 
     /* merge the arrays together using scratch for temporary storage */
     for (i = 0; i < length; i++) {
@@ -141,8 +163,8 @@ static void merge_helper(struct partecl_input *inputs, int left, int right,
        * so, we compare them.  Otherwise, we know that the merge must
        * use take the element from the left array */
       if (l < left + midpoint_distance &&
-          (r == right ||
-           max(inputs[l], inputs[r]) == test_case_length(inputs[l]))) {
+          (r == right || compare(inputs[l], inputs[r], is_ascending) ==
+                             test_case_length(inputs[l]))) {
         temp[i] = inputs[l];
         l++;
       } else {
@@ -157,12 +179,12 @@ static void merge_helper(struct partecl_input *inputs, int left, int right,
   }
 }
 
-int sort_test_cases_by_length(struct partecl_input *inputs,
-                              int num_test_cases) {
+int sort_test_cases_by_length(struct partecl_input *inputs, int num_test_cases,
+                              int is_ascending) {
   struct partecl_input *temp = (struct partecl_input *)malloc(
       sizeof(struct partecl_input) * num_test_cases);
   if (temp != NULL) {
-    merge_helper(inputs, 0, num_test_cases, temp);
+    merge_helper(inputs, 0, num_test_cases, temp, is_ascending);
     free(temp);
     return SUCCESS;
   } else {

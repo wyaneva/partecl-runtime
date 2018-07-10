@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 
   if (do_sort_test_cases) {
     // sort the test cases
-    if (sort_test_cases_by_length(inputs, num_test_cases, SORT_ASCENDING) == FAIL) {
+    if (sort_test_cases_by_length(inputs, num_test_cases, 0) == FAIL) {
       printf("Failed sorting the test cases by length.\n");
       return -1;
     }

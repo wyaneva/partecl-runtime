@@ -505,8 +505,8 @@ int main(int argc, char **argv) {
         printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 
-      int num_waits = j == 0 ? 1 : 0;
-      cl_event *wait_event = j == 0 ? &event_fsm : NULL;
+      int num_waits = 1; //j == 0 ? 0 : 1;
+      cl_event *wait_event = j == 0 ? &event_fsm : &event_inputs[j-1];
 
       err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
@@ -550,13 +550,13 @@ int main(int argc, char **argv) {
     }
 
     // finish the kernels
-    err = clFlush(queue_inputs);
+    err = clFinish(queue_inputs);
     if (err != CL_SUCCESS)
-      printf("error: clFlush queue_inputs: %d\n", err);
+      printf("error: clFinish queue_inputs: %d\n", err);
 
-    err = clFlush(queue_kernel);
+    err = clFinish(queue_kernel);
     if (err != CL_SUCCESS)
-      printf("error: clFlush queue_kernel: %d\n", err);
+      printf("error: clFinish queue_kernel: %d\n", err);
 
     err = clFinish(queue_results);
     if (err != CL_SUCCESS)

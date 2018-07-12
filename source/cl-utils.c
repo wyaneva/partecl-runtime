@@ -263,7 +263,7 @@ void create_command_queue(cl_command_queue *queue, cl_context *context,
   // create a command queue
   cl_command_queue_properties qprops = 0;
   qprops |= CL_QUEUE_PROFILING_ENABLE;
-  qprops |= CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
+  //qprops |= CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
 
   if (queue) {
     *queue = clCreateCommandQueue(*context, *dev, qprops, &err);

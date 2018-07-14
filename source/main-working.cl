@@ -159,3 +159,5 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
   *output_ptr ='\0';
 #endif
 }
+//comment
+//comment

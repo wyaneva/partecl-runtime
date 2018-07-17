@@ -14,11 +14,11 @@
 #endif
 
 #ifndef NUM_STATES
-#define NUM_STATES 4004
+#define NUM_STATES 42
 #endif
 
 #ifndef MAX_NUM_TRANSITIONS_PER_STATE
-#define MAX_NUM_TRANSITIONS_PER_STATE 3
+#define MAX_NUM_TRANSITIONS_PER_STATE 256
 //2^(input_length)
 //256 - for ASCII
 #endif

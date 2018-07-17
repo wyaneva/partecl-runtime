@@ -6,20 +6,10 @@
  **********************************/
 
 /*
- * BMRK toggles special code for C programs or FSM network and open source benchmarks
- */
+ * BMRK toggles special code for C programs */
+
 #ifndef BMRK_C
 #define BMRK_C 0
-#endif
-
-#ifndef BMRK_NETWORK
-#define BMRK_NETWORK 1
-#endif
-
-#if BMRK_NETWORK
-#define BMRK_OS 0
-#else
-#define BMRK_OS 1
 #endif
 
 /*

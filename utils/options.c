@@ -37,7 +37,8 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 // optional arguments
 // int* ldim - from gpu code
 // int* do_choose_device - from gpu code
-// int* num_chunks - from gpu code
+// int* size_chunks - from gpu code
+// int* do+pad_test-cases - from gpu code
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
                  int *do_choose_device, int *size_chunks, int *do_pad_test_cases,

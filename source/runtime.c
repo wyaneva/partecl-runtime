@@ -42,7 +42,6 @@
 #endif
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
-void calculate_global_offset(size_t[3], int, int);
 void pad_test_case_number(const cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
 
@@ -135,9 +134,10 @@ int main(int argc, char **argv) {
 
   if (size_chunks == 0) {
 
-    // we are not chunking - max padding case
+    // we are not chunking
     num_chunks = 1;
     size_inputs_total = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
+
   } else {
 
     // we are chunking
@@ -154,12 +154,16 @@ int main(int argc, char **argv) {
   int padded_input_size_chunks[num_chunks];
 
   if (num_chunks == 1) {
+
+    // we are not chunking
     num_tests_chunks[0] = num_test_cases;
     size_inputs_chunks[0] = size_inputs_total;
     buf_offsets_chunks[0] = 0;
     padded_input_size_chunks[0] = PADDED_INPUT_ARRAY_SIZE;
+
   } else {
 
+    // we are chunking
     // calculating again so set to 0
     num_chunks = 0;
     size_inputs_total = 0;
@@ -169,77 +173,36 @@ int main(int argc, char **argv) {
                             size_inputs_chunks, buf_offsets_chunks, &device);
   }
 
-  //allocate & populate inputs and results
-  char* inputs_chunks[num_chunks];
-  char* results_chunks[num_chunks];
+  // allocate & populate inputs and results
+  char *inputs_chunks[num_chunks];
+  char *results_chunks[num_chunks];
 
   int testid_start = 0;
   for (int j = 0; j < num_chunks; j++) {
+
     inputs_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
     int num_tests = num_tests_chunks[j];
+
     for (int i = testid_start; i < testid_start + num_tests; i++) {
+
       int padded_size = padded_input_size_chunks[j];
       for (int k = 0; k < padded_size; k++) {
-        int idx = (i-testid_start)*padded_size + k;
+
+        int idx = (i - testid_start) * padded_size + k;
         inputs_chunks[j][idx] = inputs_par[i].input_ptr[k];
       }
     }
+
     testid_start += num_tests;
     results_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
   }
 
   for (int j = 0; j < num_chunks; j++) {
-    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n",
-           j, num_tests_chunks[j], size_inputs_chunks[j], padded_input_size_chunks[j]);
+    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n", j,
+           num_tests_chunks[j], size_inputs_chunks[j],
+           padded_input_size_chunks[j]);
   }
 
-  // execute main code from FSM (TODO: plug main code from source file)
-  int num_transitions;
-  int starting_state;
-  int input_length;
-  int output_length;
-  if (filename == NULL) {
-    printf("Please provide an FSM filename.\n");
-    return 0;
-  }
-  printf("Reading fsm: %s\n", filename);
-  transition *transitions =
-      read_fsm(filename, &num_transitions, &starting_state, &input_length, &output_length);
-
-  if (transitions == NULL) {
-    printf("Reading the FSM failed.");
-    return -1;
-  }
-
-  size_t size_transitions = sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
-  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
-         size_transitions);
-
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases, size_inputs_total);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs_total);
-
-#if FSM_INPUTS_WITH_OFFSETS
-  // calculate sizes
-  int total_number_of_inputs;
-  size_t size_inputs_offset;
-  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
-                              inputs_par, num_test_cases);
-
-  // allocate memory
-  char *inputs_offset = (char *)malloc(size_inputs_offset);
-  char *results_offset = (char *)malloc(size_inputs_offset);
-  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
-
-  // copy data
-  partecl_input_to_input_with_offsets(inputs_par, inputs_offset, offsets,
-                                      num_test_cases);
-
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
-         size_inputs_offset);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs_offset);
-#else
 #if FSM_INPUTS_COAL_CHAR
 
   for (int j = 0; j < num_chunks; j++) {
@@ -247,7 +210,6 @@ int main(int argc, char **argv) {
     transpose_inputs_char(inputs_chunks[j], max_input_size, num_tests_chunks[j],
                           input_length);
   }
-
 #else
 #if FSM_INPUTS_COAL_CHAR4
   // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
@@ -276,9 +238,60 @@ int main(int argc, char **argv) {
          size_inputs_coal_char4);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_coal_char4);
+
+#else
+#if FSM_INPUTS_WITH_OFFSETS
+  // calculate sizes
+  int total_number_of_inputs;
+  size_t size_inputs_offset;
+  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
+                              inputs_par, num_test_cases);
+
+  // allocate memory
+  char *inputs_offset = (char *)malloc(size_inputs_offset);
+  char *results_offset = (char *)malloc(size_inputs_offset);
+  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
+
+  // copy data
+  partecl_input_to_input_with_offsets(inputs_par, inputs_offset, offsets,
+                                      num_test_cases);
+
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
 #endif
 #endif
 #endif
+
+  // execute main code from FSM (TODO: plug main code from source file)
+  int num_transitions;
+  int starting_state;
+  int input_length;
+  int output_length;
+  if (filename == NULL) {
+    printf("Please provide an FSM filename.\n");
+    return 0;
+  }
+  printf("Reading fsm: %s\n", filename);
+  transition *transitions =
+      read_fsm(filename, &num_transitions, &starting_state, &input_length,
+               &output_length);
+
+  if (transitions == NULL) {
+    printf("Reading the FSM failed.");
+    return -1;
+  }
+
+  size_t size_transitions =
+      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
+  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
+         size_transitions);
+
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_total);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_total);
 
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
@@ -365,6 +378,11 @@ int main(int argc, char **argv) {
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
+
+    cl_mem buf_offsets =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_offsets: %d\n", err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
     cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
@@ -387,13 +405,6 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #endif
-#endif
-
-#if FSM_INPUTS_WITH_OFFSETS
-    cl_mem buf_offsets =
-        clCreateBuffer(ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
-    if (err != CL_SUCCESS)
-      printf("error: clCreateBuffer buf_offsets: %d\n", err);
 #endif
 
     cl_mem buf_transitions =
@@ -481,6 +492,7 @@ int main(int argc, char **argv) {
       printf("error: clEnqueueWriteBuffer buf_transitions: %d\n", err);
 
     for (int j = 0; j < num_chunks; j++) {
+
       // transfer input to device
 #if FSM_INPUTS_WITH_OFFSETS
       err = clEnqueueWriteBuffer(queue_inputs, buf_offsets, CL_FALSE, 0,
@@ -503,14 +515,8 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
-#if !FSM_INPUTS_COAL_CHAR
-      // set the padded size argument for the kernel
-      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
-      if(err != CL_SUCCESS)
-        printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
-#endif
 
-      int num_waits = 1; //j == 0 ? 0 : 1;
+      int num_waits = 1;
       cl_event *wait_event = j == 0 ? &event_fsm : &event_inputs[j-1];
 
       err = clEnqueueWriteBuffer(queue_inputs, buf_inputs, CL_FALSE,
@@ -518,12 +524,17 @@ int main(int argc, char **argv) {
                                  inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+#if !FSM_INPUTS_COAL_CHAR
+      // set the padded size argument for the kernel
+      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
+      if(err != CL_SUCCESS)
+        printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
+#endif
 #endif
 #endif
 
       // launch kernel
-      //calculate_global_offset(goffset, chunksize, j);
-
       err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,
                                    &event_inputs[j], &event_kernel[j]);
       if (err != CL_SUCCESS)
@@ -622,9 +633,11 @@ int main(int argc, char **argv) {
           //printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
           //     end_to_end, trans_fsm);
         }
+        /*
         else {
           printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
         }
+        */
       }
     }
 
@@ -780,12 +793,6 @@ void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],
   ldim[0] = ldim0;
   ldim[1] = 1;
   ldim[2] = 1;
-}
-
-void calculate_global_offset(size_t goffset[3], int chunksize, int j) {
-  goffset[0] = chunksize * j;
-  goffset[1] = 0;
-  goffset[2] = 0;
 }
 
 void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,

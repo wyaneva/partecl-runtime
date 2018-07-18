@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
   size_t buf_offsets_chunks[num_chunks];
   int padded_input_size_chunks[num_chunks];
 
-  if (num_chunks == 1) {
+  if (size_chunks == 0) {
 
     // we are not chunking
     num_tests_chunks[0] = num_test_cases;

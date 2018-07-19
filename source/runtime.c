@@ -94,6 +94,30 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
 
+  // execute main code from FSM (TODO: plug main code from source file)
+  int num_transitions;
+  int starting_state;
+  int input_length;
+  int output_length;
+  if (filename == NULL) {
+    printf("Please provide an FSM filename.\n");
+    return 0;
+  }
+  printf("Reading fsm: %s\n", filename);
+  transition *transitions =
+      read_fsm(filename, &num_transitions, &starting_state, &input_length,
+               &output_length);
+
+  if (transitions == NULL) {
+    printf("Reading the FSM failed.");
+    return -1;
+  }
+
+  size_t size_transitions =
+      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
+  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
+         size_transitions);
+
   if (do_pad_test_cases) {
     // pad the test case number to nearest multiple of workgroup size
     pad_test_case_number(&device, &num_test_cases);
@@ -263,30 +287,6 @@ int main(int argc, char **argv) {
 #endif
 #endif
 #endif
-
-  // execute main code from FSM (TODO: plug main code from source file)
-  int num_transitions;
-  int starting_state;
-  int input_length;
-  int output_length;
-  if (filename == NULL) {
-    printf("Please provide an FSM filename.\n");
-    return 0;
-  }
-  printf("Reading fsm: %s\n", filename);
-  transition *transitions =
-      read_fsm(filename, &num_transitions, &starting_state, &input_length,
-               &output_length);
-
-  if (transitions == NULL) {
-    printf("Reading the FSM failed.");
-    return -1;
-  }
-
-  size_t size_transitions =
-      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
-  printf("Size of FSM with %d transitions is %ld bytes.\n", num_transitions,
-         size_transitions);
 
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
          size_inputs_total);

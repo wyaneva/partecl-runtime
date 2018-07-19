@@ -48,7 +48,7 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
-#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL4
+#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions_knl,

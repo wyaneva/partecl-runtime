@@ -25,7 +25,6 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
   int index = get_index(current_state, input);
   transition trans = transitions[index];
 
-  printf("%d %c %d\n", current_state, input, trans.next_state);
   if (trans.next_state == -1) {
     printf("\nCouldn't find transition for state %d, input %c.\n",
            current_state, input);
@@ -33,7 +32,6 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
   }
 
   *output_ptr = *(trans.output);
-  //strcpy_global(output_ptr, trans.output);
   return trans.next_state;
 }
 

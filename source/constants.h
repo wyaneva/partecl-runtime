@@ -54,7 +54,7 @@
  */
 
 #ifndef SORT_ASCENDING
-#define SORT_ASCENDING 1
+#define SORT_ASCENDING 0
 #endif
 
 /*

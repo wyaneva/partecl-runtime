@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Vanya Yaneva, The University of Edinburgh
+ * Copyright 2016-2018 Vanya Yaneva, The University of Edinburgh
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,15 +37,16 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 // optional arguments
 // int* ldim - from gpu code
 // int* do_choose_device - from gpu code
-// int* num_chunks - from gpu code
+// int* size_chunks - from gpu code
+// int* do+pad_test-cases - from gpu code
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *num_chunks, int *do_pad_test_cases,
-                 int *do_sort_test_cases, int *bucket_width, char **filename) {
+                 int *do_choose_device, int *size_chunks, int *do_pad_test_cases,
+                 int *do_sort_test_cases, char **filename) {
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
-           "(-chunks ..number..) \n");
+           "(-chunksize ..number..) \n");
     return FAIL;
   }
   *num_test_cases = atoi(argv[1]);
@@ -113,18 +114,12 @@ int read_options(int argc, char **argv, int *num_test_cases,
           return FAIL;
       }
 
-      // BUCKET WIDTH
-      else if (strcmp(label, "-bucketwidth") == 0 && bucket_width) // for grouping test cases based on size
-      {
-        *bucket_width = atoi(argv[i + 1]);
-      }
-
-      // OVERLAP
-      else if (strcmp(label, "-chunks") == 0 && num_chunks) {
-        *num_chunks = atoi(argv[i + 1]);
-        if (*num_chunks < 1) {
+      // OVERLAP - CHUNK SIZE IN MB
+      else if (strcmp(label, "-chunksize") == 0 && size_chunks) {
+        *size_chunks = atoi(argv[i + 1]);
+        if (*size_chunks < 0) {
           printf(
-              "Please, provide a number of overlapping input chunks >= 1.\n");
+              "Please, provide a size for overlapping chunks >= 0 (in MB).\n");
           return FAIL;
         }
       } else {

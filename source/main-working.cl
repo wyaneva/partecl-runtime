@@ -26,12 +26,12 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
   transition trans = transitions[index];
 
   if (trans.next_state == -1) {
-    printf("\nCouldn't find transition for state %d, input %s.\n",
+    printf("\nCouldn't find transition for state %d, input %c.\n",
            current_state, input);
+    return current_state;
   }
 
   *output_ptr = *(trans.output);
-  //strcpy_global(output_ptr, trans.output);
   return trans.next_state;
 }
 
@@ -48,14 +48,23 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
+#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions_knl,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
+#else
+kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
+                        global TEST_INPUTS_TYPE *results,
+                        FSM_ATTR_KNL transition *transitions_knl,
+                        int starting_state, int input_length, int output_length,
+                        int num_test_cases, int padded_input_size) {
+#endif
 #endif
 
   int idx = get_global_id(0);
+  int num_threads = get_global_size(0);
 
   // FSM
 #if FSM_LOCAL_MEMORY
@@ -83,12 +92,11 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
   global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #else
-  global TEST_INPUTS_TYPE *input_ptr = &inputs[idx*PADDED_INPUT_ARRAY_SIZE];
-  global TEST_INPUTS_TYPE *output_ptr = &results[idx*PADDED_INPUT_ARRAY_SIZE];
+  int coal_idx = idx*padded_input_size;
+  global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
+  global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
 #endif
-
 #endif
-  //keep this comment
 
   // execute
   short current_state = starting_state;
@@ -137,8 +145,8 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 #endif
 
 #if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
-    input_ptr += input_length * num_test_cases;
-    output_ptr += output_length * num_test_cases;
+    input_ptr += input_length * num_threads;
+    output_ptr += output_length * num_threads;
 #else
     input_ptr += input_length;
     output_ptr += output_length;

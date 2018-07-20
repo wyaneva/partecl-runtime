@@ -294,10 +294,12 @@ int main(int argc, char **argv) {
 #endif
 #endif
 
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
   printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
          size_inputs_total);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_total);
+#endif
 
   struct partecl_result *exp_results;
   exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *

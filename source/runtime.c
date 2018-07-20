@@ -156,6 +156,11 @@ int main(int argc, char **argv) {
   size_chunks *= KB_TO_B; // turn into bytes
   size_t size_inputs_total = 0;
 
+#if FSM_INPUTS_WITH_OFFSETS || FSM_INPUTS_COAL_CHAR4
+  // do not chunk for with-offsets and padded-transposed-char4
+  num_chunks = 1;
+#else
+
   if (size_chunks == 0) {
 
     // we are not chunking
@@ -226,6 +231,7 @@ int main(int argc, char **argv) {
            num_tests_chunks[j], size_inputs_chunks[j],
            padded_input_size_chunks[j]);
   }
+#endif
 
 #if FSM_INPUTS_COAL_CHAR
 
@@ -302,7 +308,11 @@ int main(int argc, char **argv) {
   // clalculate dimensions
   size_t gdim[num_chunks][3], ldim[num_chunks][3]; // assuming three dimensions
   for (int j = 0; j < num_chunks; j++) {
-    calculate_dimensions(&device, gdim[j], ldim[j], num_tests_chunks[j], ldim0);
+    int num_tests = num_test_cases;
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
+    num_tests = num_tests_chunks[j];
+#endif
+    calculate_dimensions(&device, gdim[j], ldim[j], num_tests, ldim0);
     printf("LDIM = %zd, chunks = %d\n", ldim[j][0], num_chunks);
   }
 
@@ -712,10 +722,12 @@ int main(int argc, char **argv) {
   free(inputs_par);
   free(results_par);
   free(exp_results);
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
   for (int i = 0; i < num_chunks; i++) {
     free(inputs_chunks[i]);
     free(results_chunks[i]);
   }
+#endif
 #if FSM_INPUTS_COAL_CHAR4
   free(inputs_coal_char4);
 #endif

@@ -17,6 +17,7 @@
 #include "read-test-cases.h"
 #include "../kernel-gen/cpu-gen.h"
 #include "../utils/utils.h"
+#include "../source/constants.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -92,7 +93,7 @@ void copyToken(char **token, char **bptr) {
     if (*cptr == '\\') {
       cptr++;
       if (*cptr == 'a' || *cptr == 'b' || *cptr == 't' || *cptr == 'n' ||
-          *cptr == 'v' || *cptr == 'f' || *cptr == 'r') {
+          *cptr == 'v' || *cptr == 'f' || *cptr == 'r' || *cptr == '\\') {
         switch (*cptr) {
         case 'a':
           (*token)[char_position] = (char)(7); // ascii value correspinding to
@@ -115,6 +116,9 @@ void copyToken(char **token, char **bptr) {
           break;
         case 'r':
           (*token)[char_position] = (char)(13);
+          break;
+        case '\\':
+          (*token)[char_position] = (char)(92);
           break;
         }
         char_position++;
@@ -237,6 +241,7 @@ int parseArg(char **arg, char **bptr) {
   if (**bptr == '\n')
     return SUCCESS;
 
+#if BMRK_C
   // handle string
   if (**bptr == '"') {
     int parse = parseString(arg, bptr);
@@ -254,6 +259,7 @@ int parseArg(char **arg, char **bptr) {
     else
       return FAIL;
   }
+#endif
 
   // handle others
   copyToken(arg, bptr);

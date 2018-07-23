@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Vanya Yaneva, The University of Edinburgh
+ * Copyright 2016-2018 Vanya Yaneva, The University of Edinburgh
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,15 @@
 #define NUM_RUNS 1
 #define DO_TIME 0
 #define DO_CHOOSE_DEVICE 0
-#define NUM_CHUNKS 1
+#define SIZE_CHUNKS 0 // in KB
 #define LDIM 0
+#define DO_PAD_TEST_CASES 1
+#define DO_SORT_TEST_CASES 0
+#define KB_TO_B 1024
 
 int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
-                 int *do_choose_device, int *do_overlap, char **filename);
+                 int *do_choose_device, int *size_chunks, int *do_pad_test_cases,
+                 int *do_sort_test_cases, char **filename);
 
 #endif

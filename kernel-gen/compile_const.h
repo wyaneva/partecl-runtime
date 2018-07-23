@@ -13,14 +13,14 @@
 #define OUTPUT_LENGTH_FSM 2
 #endif
 
-/********************************/
+#ifndef NUM_STATES
+#define NUM_STATES 4004
+#endif
 
-/*****************************
- * Used in kernel
- *****************************/
-
-#ifndef OUTPUT_LENGTH_KERNEL
-#define OUTPUT_LENGTH_KERNEL 300
+#ifndef MAX_NUM_TRANSITIONS_PER_STATE
+#define MAX_NUM_TRANSITIONS_PER_STATE 3
+//2^(input_length)
+//256 - for ASCII
 #endif
 
 /********************************/

@@ -3,17 +3,35 @@
 NUM_TESTS=$1
 FSM_FILENAME=$2
 NUM_CPU_THREADS=$3
-DO_SORT=$4
-CHUNKSIZE=$5
+DO_SORT=$4 # values Y or N
+CHUNKSIZE=$5 # default is 0 = no chunking
+DO_BUILD=$6 # values Y or N
+output_file=compare.out
 
-cd ../build
-make clean && make
-cd ../scripts
+# build the code
+if [ $DO_BUILD == Y ]
+then
+  cd ../build &> /dev/null
+  make clean && make &>> $output_file
+  cd ../scripts &> /dev/null
+fi
 
-./../build/gpu-test $NUM_TESTS -results Y -time N -runs 1 -filename $FSM_FILENAME -chunksize $CHUNKSIZE -sort $DO_SORT > "gpu.correctness"
-./../build/openmp-run.sh $NUM_TESTS N Y 1 $NUM_CPU_THREADS $FSM_FILENAME Y > "cpu.correctness"
+# run the code
+./../build/gpu-test $NUM_TESTS -results Y -time N -runs 1 -filename $FSM_FILENAME -chunksize $CHUNKSIZE -sort $DO_SORT > gpu.correctness 2>> $output_file
+./../build/openmp-run.sh $NUM_TESTS N Y 1 $NUM_CPU_THREADS $FSM_FILENAME $DO_SORT > cpu.correctness 2>> $output_file
 
-diff "gpu.correctness" "cpu.correctness" 
+# remove control lines
+sed -i -e 1,20d gpu.correctness
+sed -i -e 1,9d cpu.correctness
 
-#rm "gpu.correctness"
-#rm "cpu.correctness"
+# check if results are different
+diff gpu.correctness cpu.correctness > diff.result
+if [ -s diff.result ] 
+then
+  echo -1
+else
+  echo 1
+fi
+
+rm gpu.correctness
+rm cpu.correctness

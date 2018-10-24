@@ -1,5 +1,5 @@
 #generated folders, relative to the tested benchmark
-#kernel-gen/*
+kernel-gen/*
 #cpu-gen/*
 cuda/kernel/*
 kernel-gen/tests.txt

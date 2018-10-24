@@ -20,9 +20,9 @@ fi
 ./../build/gpu-test $NUM_TESTS -results Y -time N -runs 1 -filename $FSM_FILENAME -chunksize $CHUNKSIZE -sort $DO_SORT > gpu.correctness 2>> $output_file
 ./../build/openmp-run.sh $NUM_TESTS N Y 1 $NUM_CPU_THREADS $FSM_FILENAME $DO_SORT > cpu.correctness 2>> $output_file
 
-# remove control lines
-sed -i -e 1,20d gpu.correctness
-sed -i -e 1,9d cpu.correctness
+# remove control lines (ones which do not show test case results)
+sed -i '/TC /!d' gpu.correctness
+sed -i '/TC /!d' cpu.correctness
 
 # check if results are different
 diff gpu.correctness cpu.correctness > diff.result

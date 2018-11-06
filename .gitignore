@@ -7,6 +7,9 @@ kernel-gen/tests.txt
 #fsm files
 build/*.fsm
 build/*.kiss2
+build/*.py
+build/run-fsm.sh
+build/run-fsm-master.sh
 
 #objects & executables
 build/gpu-test

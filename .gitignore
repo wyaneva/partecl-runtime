@@ -14,6 +14,7 @@ build/run-fsm-master.sh
 #objects & executables
 build/gpu-test
 build/cpu-test
+build/experiments/*
 cuda/cuda-test
 cuda/kernel.o
 cuda/*.nvprof

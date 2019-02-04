@@ -211,14 +211,17 @@ int main(int argc, char **argv) {
 
     inputs_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
     int num_tests = num_tests_chunks[j];
+    char* inptptr = inputs_chunks[j];
 
     for (int i = testid_start; i < testid_start + num_tests; i++) {
 
       int padded_size = padded_input_size_chunks[j];
       for (int k = 0; k < padded_size; k++) {
 
-        int idx = (i - testid_start) * padded_size + k;
-        inputs_chunks[j][idx] = inputs_par[i].input_ptr[k];
+        //int idx = (i - testid_start) * padded_size + k;
+        //inputs_chunks[j][idx] = inputs_par[i].input_ptr[k];
+        *inptptr = inputs_par[i].input_ptr[k];
+        inptptr++;
       }
     }
 

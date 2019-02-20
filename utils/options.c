@@ -46,7 +46,7 @@ int read_options(int argc, char **argv, int *num_test_cases,
   if (argc < 2) {
     printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
-           "(-chunksize ..number..) \n");
+           "(-chunksize ..number.. (in MB)) \n");
     return FAIL;
   }
   *num_test_cases = atoi(argv[1]);

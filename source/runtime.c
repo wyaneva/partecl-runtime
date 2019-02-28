@@ -824,12 +824,21 @@ void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
   char *inputs_temp = (char *)malloc(size);
 
   for (int i = 0; i < num_test_cases; i++) {
+    char *inputs_temp_ptr = inputs_temp + i;
+    char *inputs_ptr = inputs + i * max_input_size;
     for (int j = 0; j < max_input_size; j++) {
-      inputs_temp[j * num_test_cases + i] = inputs[i * max_input_size + j];
+      *inputs_temp_ptr = *inputs_ptr;
+      inputs_temp_ptr += num_test_cases;
+      inputs_ptr++;
     }
   }
+
+  char *inputs_ptr = inputs;
+  char *inputs_temp_ptr = inputs_temp;
   for (int i = 0; i < num_test_cases * max_input_size; i++) {
-    inputs[i] = inputs_temp[i];
+    *inputs_ptr = *inputs_temp_ptr;
+    inputs_ptr++;
+    inputs_temp_ptr++;
   }
 
   free(inputs_temp);

@@ -218,8 +218,6 @@ int main(int argc, char **argv) {
       int padded_size = padded_input_size_chunks[j];
       for (int k = 0; k < padded_size; k++) {
 
-        //int idx = (i - testid_start) * padded_size + k;
-        //inputs_chunks[j][idx] = inputs_par[i].input_ptr[k];
         *inptptr = inputs_par[i].input_ptr[k];
         inptptr++;
       }
@@ -234,6 +232,8 @@ int main(int argc, char **argv) {
            num_tests_chunks[j], size_inputs_chunks[j],
            padded_input_size_chunks[j]);
   }
+
+  free(inputs_par);
 #endif
 
 #if FSM_INPUTS_COAL_CHAR
@@ -272,6 +272,7 @@ int main(int argc, char **argv) {
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_coal_char4);
 
+  free(inputs_par);
 #else
 #if FSM_INPUTS_WITH_OFFSETS
   // calculate sizes
@@ -293,6 +294,8 @@ int main(int argc, char **argv) {
          size_inputs_offset);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_offset);
+
+  free(inputs_par);
 #endif
 #endif
 #endif
@@ -729,7 +732,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  free(inputs_par);
   free(results_par);
   free(exp_results);
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4

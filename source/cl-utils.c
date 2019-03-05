@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef CL_UTILS_H
-#define CL_UTILS_H
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -239,6 +237,9 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   else
     printf("Global memory cache size (in bytes): %ld \n", global_memory_cache_size);
 
+  // maximum memory to allocate in a buffer
+  // printf("Maximum memory to allocate in a buffer (in bytes): %ld \n", get_max_mem_alloc_size(dev));
+
   char version[100];
   err =
       clGetDeviceInfo(*dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);
@@ -296,4 +297,14 @@ size_t get_local_mem_size(cl_device_id *dev) {
   return local_memory_size;
 }
 
-#endif
+size_t get_max_mem_alloc_size(cl_device_id *dev) {
+
+  size_t max_mem_alloc_size = 0;
+  cl_int err =
+      clGetDeviceInfo(*dev, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(max_mem_alloc_size),
+                      &max_mem_alloc_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_MAX_MEM_ALLOC_SIZE): %d\n", err);
+
+  return max_mem_alloc_size;
+}

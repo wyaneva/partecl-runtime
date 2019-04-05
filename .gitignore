@@ -18,4 +18,4 @@ build/experiments/*
 cuda/cuda-test
 cuda/kernel.o
 cuda/*.nvprof
-small-test/main
+dma-test/main

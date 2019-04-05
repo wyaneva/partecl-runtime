@@ -18,6 +18,7 @@
 #define CL_UTILS_H
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
+#include <CL/cl_ext.h>
 #include <stdbool.h>
 
 void choose_device(cl_platform_id *, cl_device_id *, bool);
@@ -26,6 +27,7 @@ void create_command_queue(cl_command_queue *, cl_context *, cl_device_id *);
 size_t get_constant_mem_size(cl_device_id *);
 size_t get_local_mem_size(cl_device_id *);
 size_t get_max_mem_alloc_size(cl_device_id *);
+cl_bool get_gpu_ovelap_nv(cl_device_id *);
 cl_kernel kernel_from_string(cl_context, char const *, char const *,
                              char const *);
 

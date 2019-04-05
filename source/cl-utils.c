@@ -239,6 +239,10 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
 
   // maximum memory to allocate in a buffer
   // printf("Maximum memory to allocate in a buffer (in bytes): %ld \n", get_max_mem_alloc_size(dev));
+  
+  // Can we overlap computation with transfer
+  cl_bool gpu_overlap = get_gpu_ovelap_nv(dev);
+  printf("Compute overlap: %d \n", gpu_overlap);
 
   char version[100];
   err =
@@ -307,4 +311,16 @@ size_t get_max_mem_alloc_size(cl_device_id *dev) {
     printf("error: clGetDeviceInfo (CL_DEVICE_MAX_MEM_ALLOC_SIZE): %d\n", err);
 
   return max_mem_alloc_size;
+}
+
+cl_bool get_gpu_ovelap_nv(cl_device_id *dev) {
+
+  cl_bool gpu_overlap = CL_FALSE;
+  cl_int err =
+      clGetDeviceInfo(*dev, CL_DEVICE_GPU_OVERLAP_NV, sizeof(gpu_overlap),
+                      &gpu_overlap, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo (CL_DEVICE_GPU_OVERLAP_NV): %d\n", err);
+
+  return gpu_overlap;
 }

@@ -16,6 +16,8 @@ then
   cd ../scripts &> /dev/null
 fi
 
+echo "Build done"
+
 # run the code
 ./../build/gpu-test $NUM_TESTS -results Y -time N -runs 1 -filename $FSM_FILENAME -chunksize $CHUNKSIZE -sort $DO_SORT > gpu.correctness 2>> $output_file
 ./../build/openmp-run.sh $NUM_TESTS N Y 1 $NUM_CPU_THREADS $FSM_FILENAME $DO_SORT > cpu.correctness 2>> $output_file

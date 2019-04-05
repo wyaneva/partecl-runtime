@@ -6,7 +6,7 @@
 
 #define DMA 0
 #define NUM_INT 100
-#define NUM_RUNS 100
+#define NUM_RUNS 100 
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 
@@ -177,7 +177,7 @@ int main(int argc, const char **argv) {
 
     // transfer results
     err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE, 0,
-                              size_inputs_total, results, 0, NULL,
+                              size_inputs_total, results, 1, &event_kernel,
                               &event_results);
     if (err != CL_SUCCESS)
       printf("error: clEnqueueWriteBuffer: %d\n", err);

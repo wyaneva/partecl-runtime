@@ -4,9 +4,11 @@
 #include "../utils/timing.h"
 #include "../utils/utils.h"
 
-#define DMA 0
-#define NUM_INT 100
-#define NUM_RUNS 100 
+#define DMA 1
+#define NUM_INT 10000000
+//#define NUM_INT 100
+#define NUM_RUNS 100
+//#define NUM_RUNS 2
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 
@@ -62,18 +64,32 @@ int main(int argc, const char **argv) {
 
   for (int j = 0; j < NUM_RUNS; j++) {
 
+#if DMA
     // create buffers
     cl_mem buf_inputs =
-        clCreateBuffer(ctx, CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE,
+        clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                       size_inputs_total, inputs, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+    cl_mem buf_results =
+        clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                       size_inputs_total, results, &err);
+    if (err != CL_SUCCESS)
+      printf("error: clCreateBuffer buf_results: %d\n", err);
+#else
+    cl_mem buf_inputs =
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE,
                        size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
     cl_mem buf_results =
-        clCreateBuffer(ctx, CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE,
+        clCreateBuffer(ctx, CL_MEM_READ_WRITE,
                        size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
+#endif
 
     // set kernel arguments
     err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
@@ -110,46 +126,53 @@ int main(int argc, const char **argv) {
 
     struct timespec ete_start_inputs, ete_end_inputs;
     struct timespec ete_start_results, ete_end_results;
+    struct timespec ete_start_kernel, ete_end_kernel;
 
     get_timestamp(&ete_start);
 
     // declare/map inputs array
     get_timestamp(&ete_start_inputs);
 
+    /**
     int *inputs_dma =
-        clEnqueueMapBuffer(queue_inputs, buf_inputs, CL_TRUE, CL_MAP_WRITE, 0,
+        clEnqueueMapBuffer(queue_inputs, buf_inputs, CL_FALSE, CL_MAP_WRITE, 0,
                            size_inputs_total, 0, NULL, &event_inputs, &err);
     if (err != CL_SUCCESS)
       printf("error: clEnqueueMapBuffer inputs: %d\n", err);
 
     // populate inputs array
-    memcpy(inputs_dma, inputs, size_inputs_total);
+    //memcpy(inputs_dma, inputs, size_inputs_total);
 
     // unmap inputs array
-    err = clEnqueueUnmapMemObject(queue_inputs, buf_inputs, inputs_dma, 0, NULL,
-                                  NULL);
+    err = clEnqueueUnmapMemObject(queue_inputs, buf_inputs, inputs_dma, 1, &event_inputs,
+                                  &event_inputs);
     if (err != CL_SUCCESS)
       printf("error: clEnqueueUnmapMemObject inputs: %d\n", err);
+      */
 
     get_timestamp(&ete_end_inputs);
 
     // launch kernel
-    err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim, ldim, 1,
-                                 &event_inputs, &event_kernel);
+    get_timestamp(&ete_start_kernel);
+
+    err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim, ldim, 0,
+                                 NULL, &event_kernel);
     if (err != CL_SUCCESS)
       printf("error: clEnqueueNDRangeKernel: %d\n", err);
+
+    get_timestamp(&ete_end_kernel);
 
     // declare/map results array
     get_timestamp(&ete_start_results);
 
-    int *results_dma = clEnqueueMapBuffer(queue_results, buf_results, CL_FALSE,
+    int *results_dma = clEnqueueMapBuffer(queue_results, buf_results, CL_TRUE,
                                           CL_MAP_READ, 0, size_inputs_total, 1,
                                           &event_kernel, &event_results, &err);
     if (err != CL_SUCCESS)
       printf("error: clEnqueueMapBuffer results: %d\n", err);
 
     // populate results array
-    memcpy(results, results_dma, size_inputs_total);
+    //memcpy(results, results_dma, size_inputs_total);
 
     // unmap results array
     err = clEnqueueUnmapMemObject(queue_results, buf_results, results_dma, 0,
@@ -215,12 +238,13 @@ int main(int argc, const char **argv) {
 
 #if DMA
 
-    trans_inputs = timestamp_diff_in_seconds(ete_start_inputs, ete_end_inputs) *
+    //trans_inputs = timestamp_diff_in_seconds(ete_start_inputs, ete_end_inputs) *
+    //               1000; // in ms
+    trans_inputs = timestamp_diff_in_seconds(ete_start_kernel, ete_end_kernel) *
                    1000; // in ms
     trans_results =
         timestamp_diff_in_seconds(ete_start_results, ete_end_results) *
         1000; // in ms
-
 #else
     clGetEventProfilingInfo(event_inputs, CL_PROFILING_COMMAND_START,
                             sizeof(cl_ulong), &ev_start_time, NULL);
@@ -241,15 +265,21 @@ int main(int argc, const char **argv) {
                             sizeof(cl_ulong), &ev_end_time, NULL);
     time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
 
+#if DMA
+    trans_inputs -= time_gpu;
+#endif
+
     end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
     printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu,
            end_to_end);
   }
   // print results
+  /*
   for (int i = 0; i < NUM_INT; i++) {
     printf("%d ", results[i]);
   }
   printf("\n");
+  */
 
   return 0;
 }

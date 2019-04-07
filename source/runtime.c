@@ -41,6 +41,10 @@
 #define KERNEL_OPTIONS ""
 #endif
 
+// we will use pinned memory with DMA transfer to transfer inputs and results
+// this is particularly the case for padded and padded-transposed
+#define DMA 0
+
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void pad_test_case_number(const cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
@@ -413,6 +417,9 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
+#if DMA
+    // we will allocate buffers separately for every chunk
+#else
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
@@ -422,6 +429,7 @@ int main(int argc, char **argv) {
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_results: %d\n", err);
+#endif
 #endif
 #endif
 
@@ -445,6 +453,9 @@ int main(int argc, char **argv) {
 #define KNL_ARG_PADDED_INPUT_SIZE 7
 #endif
 
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+    // we will allocate kernel arguments for each chunk   
+#else
     // add kernel arguments
     err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
     if (err != CL_SUCCESS)
@@ -479,12 +490,18 @@ int main(int argc, char **argv) {
     err = clSetKernelArg(knl, KNL_ARG_NUM_TEST_CASES, sizeof(int), &num_test_cases);
     if (err != CL_SUCCESS)
       printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
+#endif
 
     // declare events
     cl_event event_inputs[num_chunks];
     cl_event event_offsets[num_chunks];
     cl_event event_kernel[num_chunks];
     cl_event event_results[num_chunks];
+
+#if DMA
+    struct timespec ete_start_kernel[num_chunks];
+    struct timespec ete_end_kernel[num_chunks];
+#endif
 
     // flush the queues before timing
     err = clFinish(queue_inputs);
@@ -534,6 +551,9 @@ int main(int argc, char **argv) {
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
 
+#if DMA
+      // TODO: delcare memory buffers and add kernel arguments
+#else
       int num_waits = 1;
       cl_event *wait_event = j == 0 ? &event_fsm : &event_inputs[j-1];
 
@@ -542,6 +562,7 @@ int main(int argc, char **argv) {
                                  inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#endif
 
 #if !FSM_INPUTS_COAL_CHAR
       // set the padded size argument for the kernel
@@ -552,11 +573,18 @@ int main(int argc, char **argv) {
 #endif
 #endif
 
+#if DMA
+      get_timestamp(&ete_start_kernel[j]);
+#endif
       // launch kernel
       err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,
                                    &event_inputs[j], &event_kernel[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
+
+#if DMA
+      get_timestamp(&ete_end_kernel[j]);
+#endif
 
         // transfer results back
 #if FSM_INPUTS_WITH_OFFSETS
@@ -573,12 +601,18 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
+
+#if DMA
+      // TODO: map and unmap results buffer
+#else
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
                                 buf_offsets_chunks[j], size_inputs_chunks[j],
                                 results_chunks[j], 1, &event_kernel[j],
                                 &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+#endif
+
 #endif
 #endif
     }
@@ -628,12 +662,16 @@ int main(int argc, char **argv) {
     double total_results = 0.0;
     double total_gpu = 0.0;
     for (int j = 0; j < num_chunks; j++) {
+#if DMA
+      // TODO: calculate input transfer through kernel time
+#else
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END,
                               sizeof(cl_ulong), &ev_end_time, NULL);
       trans_inputs = (double)(ev_end_time - ev_start_time) / 1000000;
       total_inputs += trans_inputs;
+#endif
 
       clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
@@ -648,6 +686,11 @@ int main(int argc, char **argv) {
                               sizeof(cl_ulong), &ev_end_time, NULL);
       time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
       total_gpu += time_gpu;
+
+#if DMA
+      // TODO: subtract kernel event time from total kernel time to get inputs time
+#else
+#endif
 
       if (do_time) {
         if(j == num_chunks - 1) {

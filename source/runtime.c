@@ -43,7 +43,22 @@
 
 // we will use pinned memory with DMA transfer to transfer inputs and results
 // this is particularly the case for padded and padded-transposed
-#define DMA 0
+#define DMA 1
+
+#if FSM_INPUTS_WITH_OFFSETS
+#define KNL_ARG_TRANSITIONS 3
+#define KNL_ARG_STARTING_STATE 4
+#define KNL_ARG_INPUT_LENGTH 5
+#define KNL_ARG_OUTPUT_LENGTH 6
+#define KNL_ARG_NUM_TEST_CASES 7
+#else
+#define KNL_ARG_TRANSITIONS 2
+#define KNL_ARG_STARTING_STATE 3
+#define KNL_ARG_INPUT_LENGTH 4
+#define KNL_ARG_OUTPUT_LENGTH 5
+#define KNL_ARG_NUM_TEST_CASES 6
+#define KNL_ARG_PADDED_INPUT_SIZE 7
+#endif
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void pad_test_case_number(const cl_device_id *, int *);
@@ -63,6 +78,42 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              size_t *size_inputs_chunks,
                              size_t *buf_offsets_chunks,
                              const cl_device_id *device);
+
+void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs, cl_mem *buf_results, cl_mem *buf_offsets, cl_mem *buf_transitions, int *starting_state, int *input_length, int *output_length, int *num_test_cases) {
+    cl_int err = clSetKernelArg(*knl, 0, sizeof(cl_mem), buf_inputs);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg 0: %d\n", err);
+
+    err = clSetKernelArg(*knl, 1, sizeof(cl_mem), buf_results);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg 1: %d\n", err);
+
+#if FSM_INPUTS_WITH_OFFSETS
+    err = clSetKernelArg(*knl, 2, sizeof(cl_mem), buf_offsets);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg 2: %d\n", err);
+#endif
+
+    err = clSetKernelArg(*knl, KNL_ARG_TRANSITIONS, sizeof(cl_mem), buf_transitions);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_TRANSITIONS, err);
+
+    err = clSetKernelArg(*knl, KNL_ARG_STARTING_STATE, sizeof(int), starting_state);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_STARTING_STATE, err);
+
+    err = clSetKernelArg(*knl, KNL_ARG_INPUT_LENGTH, sizeof(int), input_length);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_INPUT_LENGTH, err);
+
+    err = clSetKernelArg(*knl, KNL_ARG_OUTPUT_LENGTH, sizeof(int), output_length);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_OUTPUT_LENGTH, err);
+
+    err = clSetKernelArg(*knl, KNL_ARG_NUM_TEST_CASES, sizeof(int), num_test_cases);
+    if (err != CL_SUCCESS)
+      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
+}
 
 int main(int argc, char **argv) {
 
@@ -116,6 +167,12 @@ int main(int argc, char **argv) {
     printf("Reading the FSM failed.");
     return -1;
   }
+
+#if DMA
+  printf("Using DMA transfer!\n");
+#else
+  printf("Not using DMA transfer!\n");
+#endif
 
   size_t size_transitions =
       sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE;
@@ -438,58 +495,19 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS)
       printf("error: clCreateBuffer buf_transitions: %d\n", err);
 
-#if FSM_INPUTS_WITH_OFFSETS
-#define KNL_ARG_TRANSITIONS 3
-#define KNL_ARG_STARTING_STATE 4
-#define KNL_ARG_INPUT_LENGTH 5
-#define KNL_ARG_OUTPUT_LENGTH 6
-#define KNL_ARG_NUM_TEST_CASES 7
-#else
-#define KNL_ARG_TRANSITIONS 2
-#define KNL_ARG_STARTING_STATE 3
-#define KNL_ARG_INPUT_LENGTH 4
-#define KNL_ARG_OUTPUT_LENGTH 5
-#define KNL_ARG_NUM_TEST_CASES 6
-#define KNL_ARG_PADDED_INPUT_SIZE 7
-#endif
 
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
     // we will allocate kernel arguments for each chunk   
 #else
+
     // add kernel arguments
-    err = clSetKernelArg(knl, 0, sizeof(cl_mem), &buf_inputs);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 0: %d\n", err);
-
-    err = clSetKernelArg(knl, 1, sizeof(cl_mem), &buf_results);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 1: %d\n", err);
-
-#if FSM_INPUTS_WITH_OFFSETS
-    err = clSetKernelArg(knl, 2, sizeof(cl_mem), &buf_offsets);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg 2: %d\n", err);
+    
+#if !FSM_INPUTS_WITH_OFFSETS
+    add_kernel_arguments(&knl, &buf_inputs, &buf_results, NULL, &buf_transitions, &starting_state, &input_length, &output_length, &num_test_cases);
+#else
+    add_kernel_arguments(&knl, &buf_inputs, &buf_results, &buf_offsets, &buf_transitions, &starting_state, &input_length, &output_length, &num_test_cases);
 #endif
 
-    err = clSetKernelArg(knl, KNL_ARG_TRANSITIONS, sizeof(cl_mem), &buf_transitions);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_TRANSITIONS, err);
-
-    err = clSetKernelArg(knl, KNL_ARG_STARTING_STATE, sizeof(int), &starting_state);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_STARTING_STATE, err);
-
-    err = clSetKernelArg(knl, KNL_ARG_INPUT_LENGTH, sizeof(int), &input_length);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_INPUT_LENGTH, err);
-
-    err = clSetKernelArg(knl, KNL_ARG_OUTPUT_LENGTH, sizeof(int), &output_length);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_OUTPUT_LENGTH, err);
-
-    err = clSetKernelArg(knl, KNL_ARG_NUM_TEST_CASES, sizeof(int), &num_test_cases);
-    if (err != CL_SUCCESS)
-      printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 #endif
 
     // declare events
@@ -552,8 +570,21 @@ int main(int argc, char **argv) {
 #else
 
 #if DMA
-      // TODO: delcare memory buffers and add kernel arguments
+      // delcare memory buffers and add kernel arguments
+      cl_mem buf_inputs =
+          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, size_inputs_chunks[j], inputs_chunks[j], &err);
+      if (err != CL_SUCCESS)
+        printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+      cl_mem buf_results =
+          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE, size_inputs_chunks[j], results_chunks[j], &err);
+      if (err != CL_SUCCESS)
+        printf("error: clCreateBuffer buf_results: %d\n", err);
+
+      add_kernel_arguments(&knl, &buf_inputs, &buf_results, NULL, &buf_transitions, &starting_state, &input_length, &output_length, &num_test_cases);
+
 #else
+
       int num_waits = 1;
       cl_event *wait_event = j == 0 ? &event_fsm : &event_inputs[j-1];
 
@@ -573,17 +604,22 @@ int main(int argc, char **argv) {
 #endif
 #endif
 
+      // launch kernel
 #if DMA
       get_timestamp(&ete_start_kernel[j]);
-#endif
-      // launch kernel
-      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,
-                                   &event_inputs[j], &event_kernel[j]);
+
+      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 0,
+                                   NULL, &event_kernel[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
 
-#if DMA
       get_timestamp(&ete_end_kernel[j]);
+
+#else
+
+      err = clEnqueueNDRangeKernel(queue_kernel, knl, 1, goffset, gdim[j], ldim[j], 1,
+                                   &event_inputs[j], &event_kernel[j]);
+
 #endif
 
         // transfer results back
@@ -603,8 +639,24 @@ int main(int argc, char **argv) {
 #else
 
 #if DMA
-      // TODO: map and unmap results buffer
+      // map and unmap results buffer
+      struct partecl_result *results_dma = clEnqueueMapBuffer(queue_results, buf_results, CL_TRUE, CL_MAP_READ, 0, size_inputs_chunks[j], 1, &event_kernel[j], &event_results[j], &err);
+      if (err != CL_SUCCESS)
+        printf("error: clEnqueueMapBuffer %d: %d\n", j, err);
+
+      err = clEnqueueUnmapMemObject(queue_results, buf_results, results_dma, 0, NULL, NULL);
+
+      // release memory buffers
+      err = clReleaseMemObject(buf_inputs);
+      if (err != CL_SUCCESS)
+        printf("error: clReleaseMemObject: %d\n", err);
+
+      err = clReleaseMemObject(buf_results);
+      if (err != CL_SUCCESS)
+        printf("error: clReleaseMemObjec: %d\n", err);
+
 #else
+
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
                                 buf_offsets_chunks[j], size_inputs_chunks[j],
                                 results_chunks[j], 1, &event_kernel[j],
@@ -633,6 +685,9 @@ int main(int argc, char **argv) {
     get_timestamp(&ete_end);
 
     // free memory buffers
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+    // we will release memory buffers at the end of the chunks
+#else
     err = clReleaseMemObject(buf_inputs);
     if (err != CL_SUCCESS)
       printf("error: clReleaseMemObject: %d\n", err);
@@ -640,6 +695,7 @@ int main(int argc, char **argv) {
     err = clReleaseMemObject(buf_results);
     if (err != CL_SUCCESS)
       printf("error: clReleaseMemObjec: %d\n", err);
+#endif
 
     err = clReleaseMemObject(buf_transitions);
     if (err != CL_SUCCESS)
@@ -663,7 +719,8 @@ int main(int argc, char **argv) {
     double total_gpu = 0.0;
     for (int j = 0; j < num_chunks; j++) {
 #if DMA
-      // TODO: calculate input transfer through kernel time
+      // calculate input transfer through kernel time
+      trans_inputs = timestamp_diff_in_seconds(ete_start_kernel[j], ete_end_kernel[j]) * 1000; // in ms
 #else
       clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
                               sizeof(cl_ulong), &ev_start_time, NULL);
@@ -688,7 +745,9 @@ int main(int argc, char **argv) {
       total_gpu += time_gpu;
 
 #if DMA
-      // TODO: subtract kernel event time from total kernel time to get inputs time
+      // subtract kernel event time from total kernel time to get inputs time
+      trans_inputs -= time_gpu;
+      total_inputs += trans_inputs;
 #else
 #endif
 
@@ -763,9 +822,11 @@ int main(int argc, char **argv) {
       compare_results(results_par, exp_results, num_test_cases);
 
     for (int j = 0; j < num_chunks; j++) {
+#if !DMA // we do not use this event with DMA, as data is transferred when the kernel is started
       err = clReleaseEvent(event_inputs[j]);
       if (err != CL_SUCCESS)
         printf("error: clReleaseEvent (event_inputs) %d: %d\n", j, err);
+#endif
       err = clReleaseEvent(event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clReleaseEvent (event_results) %d: %d\n", j, err);
@@ -1013,3 +1074,5 @@ void read_expected_results(struct partecl_result *results, int num_test_cases) {
 
   // TODO:
 }
+
+

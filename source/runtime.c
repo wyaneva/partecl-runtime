@@ -460,6 +460,11 @@ int main(int argc, char **argv) {
     cl_ulong ev_start_time, ev_end_time;
     size_t goffset[3] = {0, 0, 0};
 
+#if DMA
+    struct timespec ete_start_kernel[num_chunks];
+    struct timespec ete_end_kernel[num_chunks];
+#endif
+
     // allocate device memory
 #if FSM_INPUTS_WITH_OFFSETS
     cl_mem buf_inputs =
@@ -489,7 +494,25 @@ int main(int argc, char **argv) {
       printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
 #if DMA
-    // we will allocate buffers separately for every chunk
+    // we allocate buffers separately for every chunk
+    cl_mem buf_inputs[num_chunks];
+    cl_mem buf_results[num_chunks];
+
+    for(int j = 0; j < num_chunks; j++) {
+
+      buf_inputs[j] =
+          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                         size_inputs_chunks[j], inputs_chunks[j], &err);
+      if (err != CL_SUCCESS)
+        printf("error: clCreateBuffer buf_inputs: %d\n", err);
+
+      buf_results[j] =
+          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                         size_inputs_chunks[j], results_chunks[j], &err);
+      if (err != CL_SUCCESS)
+        printf("error: clCreateBuffer buf_results: %d\n", err);
+    }
+
 #else
     cl_mem buf_inputs =
         clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
@@ -510,7 +533,7 @@ int main(int argc, char **argv) {
       printf("error: clCreateBuffer buf_transitions: %d\n", err);
 
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
-      // we will allocate kernel arguments for each chunk
+      // we will allocate inputs and results kernel arguments for each chunk
 #else
 
       // add kernel arguments
@@ -533,10 +556,6 @@ int main(int argc, char **argv) {
     cl_event event_kernel[num_chunks];
     cl_event event_results[num_chunks];
 
-#if DMA
-    struct timespec ete_start_kernel[num_chunks];
-    struct timespec ete_end_kernel[num_chunks];
-#endif
 
     // flush the queues before timing
     err = clFinish(queue_inputs);
@@ -587,23 +606,10 @@ int main(int argc, char **argv) {
 #else
 
 #if DMA
-      // delcare memory buffers and add kernel arguments
-      cl_mem buf_inputs =
-          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                         size_inputs_chunks[j], inputs_chunks[j], &err);
-      if (err != CL_SUCCESS)
-        printf("error: clCreateBuffer buf_inputs: %d\n", err);
-
-      cl_mem buf_results =
-          clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
-                         size_inputs_chunks[j], results_chunks[j], &err);
-      if (err != CL_SUCCESS)
-        printf("error: clCreateBuffer buf_results: %d\n", err);
-
-      add_kernel_arguments(&knl, &buf_inputs, &buf_results, NULL,
-                           &buf_transitions, &starting_state, &input_length,
-                           &output_length, &num_test_cases);
-
+      // add  kernel args
+    add_kernel_arguments(&knl, &buf_inputs[j], &buf_results[j], NULL,
+                         &buf_transitions, &starting_state, &input_length,
+                         &output_length, &num_test_cases);
 #else
 
       int num_waits = 1;
@@ -666,23 +672,13 @@ int main(int argc, char **argv) {
 #if DMA
       // map and unmap results buffer
       struct partecl_result *results_dma = clEnqueueMapBuffer(
-          queue_results, buf_results, CL_TRUE, CL_MAP_READ, 0,
+          queue_results, buf_results[j], CL_FALSE, CL_MAP_READ, 0,
           size_inputs_chunks[j], 1, &event_kernel[j], &event_results[j], &err);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueMapBuffer %d: %d\n", j, err);
 
-      err = clEnqueueUnmapMemObject(queue_results, buf_results, results_dma, 0,
-                                    NULL, NULL);
-
-      // release memory buffers
-      err = clReleaseMemObject(buf_inputs);
-      if (err != CL_SUCCESS)
-        printf("error: clReleaseMemObject: %d\n", err);
-
-      err = clReleaseMemObject(buf_results);
-      if (err != CL_SUCCESS)
-        printf("error: clReleaseMemObjec: %d\n", err);
-
+      err = clEnqueueUnmapMemObject(queue_results, buf_results[j], results_dma, 1,
+                                    &event_results[j], NULL);
 #else
 
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
@@ -714,7 +710,17 @@ int main(int argc, char **argv) {
 
     // free memory buffers
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
-    // we will release memory buffers at the end of the chunks
+    // we release all memory buffers for all chunks
+    for (int j = 0; j < num_chunks; j++) {
+
+      err = clReleaseMemObject(buf_inputs[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clReleaseMemObject buf_inputs[%d]: %d\n", j, err);
+
+      err = clReleaseMemObject(buf_results[j]);
+      if (err != CL_SUCCESS)
+        printf("error: clReleaseMemObject buf_results[%d]: %d\n", j, err);
+    }
 #else
     err = clReleaseMemObject(buf_inputs);
     if (err != CL_SUCCESS)
@@ -785,14 +791,10 @@ int main(int argc, char **argv) {
         if (j == num_chunks - 1) {
           end_to_end =
               timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
-          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
-                 time_gpu, end_to_end);
+          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu, end_to_end);
           printf("totals: %.6f\t%.6f\t%.6f\t%.6f\n", total_inputs,
                  total_results, total_gpu,
                  total_inputs + total_results + total_gpu);
-          // printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs,
-          // trans_results, time_gpu,
-          //     end_to_end, trans_fsm);
         } else {
           printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
         }

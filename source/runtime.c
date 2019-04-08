@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-#include "../kernel-gen/cpu-gen.h"
-#include "../kernel-gen/fsm.cl"
-#include "../kernel-gen/fsm.h"
-#include "../utils/fsm-utils.h"
 #include "../utils/options.h"
 #include "../utils/read-test-cases.h"
 #include "../utils/timing.h"
 #include "../utils/utils.h"
+#include "../utils/fsm-utils.h"
 #include "cl-utils.h"
 #include "constants.h"
-#include <CL/cl.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <CL/cl.h>
+#include "../kernel-gen/cpu-gen.h"
+#include "../kernel-gen/fsm.cl"
+#include "../kernel-gen/fsm.h"
 
 #define GPU_SOURCE "../source/main-working.cl"
 #define KERNEL_NAME "execute_fsm"

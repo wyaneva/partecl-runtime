@@ -27,7 +27,7 @@
 //  They can ONLY be on when FSM_INPUTS_WITH_OFFSETS is NOT on
 
 #ifndef FSM_INPUTS_COAL_CHAR
-#define FSM_INPUTS_COAL_CHAR 1
+#define FSM_INPUTS_COAL_CHAR 0
 #endif
 
 #ifndef FSM_INPUTS_COAL_CHAR4
@@ -54,7 +54,7 @@
  */
 
 #ifndef SORT_ASCENDING
-#define SORT_ASCENDING 0
+#define SORT_ASCENDING 1
 #endif
 
 /*

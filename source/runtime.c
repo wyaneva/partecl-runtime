@@ -495,7 +495,7 @@ int main(int argc, char **argv) {
     cl_mem buf_inputs[num_chunks];
     cl_mem buf_results[num_chunks];
 
-    for(int j = 0; j < num_chunks; j++) {
+    for (int j = 0; j < num_chunks; j++) {
 
       buf_inputs[j] =
           clCreateBuffer(ctx, CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
@@ -553,7 +553,6 @@ int main(int argc, char **argv) {
     cl_event event_kernel[num_chunks];
     cl_event event_results[num_chunks];
 
-
     // flush the queues before timing
     err = clFinish(queue_inputs);
     if (err != CL_SUCCESS)
@@ -604,9 +603,9 @@ int main(int argc, char **argv) {
 
 #if DMA
       // add  kernel args
-    add_kernel_arguments(&knl, &buf_inputs[j], &buf_results[j], NULL,
-                         &buf_transitions, &starting_state, &input_length,
-                         &output_length, &num_test_cases);
+      add_kernel_arguments(&knl, &buf_inputs[j], &buf_results[j], NULL,
+                           &buf_transitions, &starting_state, &input_length,
+                           &output_length, &num_test_cases);
 #else
 
       int num_waits = 1;
@@ -674,8 +673,8 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS)
         printf("error: clEnqueueMapBuffer %d: %d\n", j, err);
 
-      err = clEnqueueUnmapMemObject(queue_results, buf_results[j], results_dma, 1,
-                                    &event_results[j], NULL);
+      err = clEnqueueUnmapMemObject(queue_results, buf_results[j], results_dma,
+                                    1, &event_results[j], NULL);
 #else
 
       err = clEnqueueReadBuffer(queue_results, buf_results, CL_FALSE,
@@ -788,7 +787,8 @@ int main(int argc, char **argv) {
         if (j == num_chunks - 1) {
           end_to_end =
               timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
-          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu, end_to_end);
+          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
+                 time_gpu, end_to_end);
           printf("totals: %.6f\t%.6f\t%.6f\t%.6f\n", total_inputs,
                  total_results, total_gpu,
                  total_inputs + total_results + total_gpu);
@@ -1051,11 +1051,12 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
 
   for (int i = testid_start; i < num_test_cases; i++) {
 
-    calculate_chunk_padding(inputs_par[i], &current_max_test_length, &padded_input_length);
+    calculate_chunk_padding(inputs_par[i], &current_max_test_length,
+                            &padded_input_length);
 
     // add the current test case to the chunk
     num_tests++;
-    size_current_chunk = sizeof(char)*num_tests*padded_input_length;
+    size_current_chunk = sizeof(char) * num_tests * padded_input_length;
 
     if (size_current_chunk >= (size_t)size_chunks) {
 
@@ -1094,8 +1095,9 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
       calculate_chunk_padding(inputs_par[i], &current_max_test_length,
                               &padded_input_length);
     }
-    size_current_chunk = sizeof(char)*num_remaining_tests*padded_input_length;
-  
+    size_current_chunk =
+        sizeof(char) * num_remaining_tests * padded_input_length;
+
     populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
                           size_inputs_chunks, buf_offsets_chunks, *num_chunks,
                           padded_input_length, num_remaining_tests,

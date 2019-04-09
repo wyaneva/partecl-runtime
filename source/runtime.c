@@ -215,8 +215,10 @@ int main(int argc, char **argv) {
       printf("Failed sorting the test cases.\n");
       return -1;
     } else {
-      printf("Sorted test cases! Ascending? %d\n", SORT_ASCENDING);
+      printf("SORTED test cases? YES! Ascending? %d\n", SORT_ASCENDING);
     }
+  } else {
+    printf("SORTED test cases? NO!\n");
   }
 
   // calculate the number of chunks

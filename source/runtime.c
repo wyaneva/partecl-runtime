@@ -231,20 +231,10 @@ int main(int argc, char **argv) {
   num_chunks = 1;
 #else
 
-  if (size_chunks == 0) {
-
-    // we are not chunking
-    num_chunks = 1;
-    size_inputs_total = sizeof(char) * num_test_cases * PADDED_INPUT_ARRAY_SIZE;
-
-  } else {
-
-    // we are chunking
-    // calculate the number of chunks and total size dynamically
-    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
-                            num_test_cases, size_chunks, NULL, NULL, NULL, NULL,
-                            &device);
-  }
+  // calculate the number of chunks and total size dynamically
+  calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
+                          num_test_cases, size_chunks, NULL, NULL, NULL, NULL,
+                          &device);
 
   // calculate arrays for chunks
   int num_tests_chunks[num_chunks];
@@ -252,25 +242,13 @@ int main(int argc, char **argv) {
   size_t buf_offsets_chunks[num_chunks];
   int padded_input_size_chunks[num_chunks];
 
-  if (size_chunks == 0) {
-
-    // we are not chunking
-    num_tests_chunks[0] = num_test_cases;
-    size_inputs_chunks[0] = size_inputs_total;
-    buf_offsets_chunks[0] = 0;
-    padded_input_size_chunks[0] = PADDED_INPUT_ARRAY_SIZE;
-
-  } else {
-
-    // we are chunking
-    // calculating again so set to 0
-    num_chunks = 0;
-    size_inputs_total = 0;
-    calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
-                            num_test_cases, size_chunks,
-                            padded_input_size_chunks, num_tests_chunks,
-                            size_inputs_chunks, buf_offsets_chunks, &device);
-  }
+  // calculating again so set to 0
+  num_chunks = 0;
+  size_inputs_total = 0;
+  calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
+                          num_test_cases, size_chunks, padded_input_size_chunks,
+                          num_tests_chunks, size_inputs_chunks,
+                          buf_offsets_chunks, &device);
 
   // allocate & populate inputs and results
   char *inputs_chunks[num_chunks];
@@ -1088,44 +1066,47 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              size_t *buf_offsets_chunks,
                              const cl_device_id *device) {
   int num_tests = 0;
-  int padded_input_length = PADDED_INPUT_ARRAY_SIZE;
+  int padded_input_length;
   int current_max_test_length = 0;
   size_t size_current_chunk = 0;
   size_t current_buf_offset = 0;
   int testid_start = 0;
 
-  for (int i = testid_start; i < num_test_cases; i++) {
+  if (size_chunks != 0) { // we are chunking
 
-    calculate_chunk_padding(inputs_par[i], &current_max_test_length,
-                            &padded_input_length);
+    for (int i = testid_start; i < num_test_cases; i++) {
 
-    // add the current test case to the chunk
-    num_tests++;
-    size_current_chunk = sizeof(char) * num_tests * padded_input_length;
+      calculate_chunk_padding(inputs_par[i], &current_max_test_length,
+                              &padded_input_length);
 
-    if (size_current_chunk >= (size_t)size_chunks) {
+      // add the current test case to the chunk
+      num_tests++;
+      size_current_chunk = sizeof(char) * num_tests * padded_input_length;
 
-      // we have enough test cases in this chunk
+      if (size_current_chunk >= (size_t)size_chunks) {
 
-      // pad the number of test cases to be divisible by local workgroup size
-      int padded_num_tests = num_tests;
-      pad_test_case_number(device, &padded_num_tests);
-      if (padded_num_tests > num_tests) {
-        continue;
+        // we have enough test cases in this chunk
+
+        // pad the number of test cases to be divisible by local workgroup size
+        int padded_num_tests = num_tests;
+        pad_test_case_number(device, &padded_num_tests);
+        if (padded_num_tests > num_tests) {
+          continue;
+        }
+
+        populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
+                              size_inputs_chunks, buf_offsets_chunks,
+                              *num_chunks, padded_input_length, num_tests,
+                              current_buf_offset, size_current_chunk);
+        (*num_chunks)++;
+        *size_inputs_total += size_current_chunk;
+
+        num_tests = 0;
+        size_current_chunk = 0;
+        current_max_test_length = 0;
+        current_buf_offset += size_current_chunk;
+        testid_start = i + 1;
       }
-
-      populate_chunk_arrays(padded_input_chunks, num_tests_chunks,
-                            size_inputs_chunks, buf_offsets_chunks, *num_chunks,
-                            padded_input_length, num_tests, current_buf_offset,
-                            size_current_chunk);
-      (*num_chunks)++;
-      *size_inputs_total += size_current_chunk;
-
-      num_tests = 0;
-      size_current_chunk = 0;
-      current_max_test_length = 0;
-      current_buf_offset += size_current_chunk;
-      testid_start = i + 1;
     }
   }
 

@@ -33,19 +33,17 @@ int *results = malloc;
 
 //TODO: populate inputs
 
-clCreateBuffer(buf_inputs);
-clCreateBuffer(buf_results);
+// this allows the kernel to use data allocated on the host
+clCreateBuffer(buf_inputs, CL_MEM_USE_HOSR_PTR, inputs);
+clCreateBuffer(buf_results, CL_MEM_USE_HOST_PTR, results);
 
 //TODO: assign kernel arguments
 
-int *inputs_dma = clEnqueueMapBuffer(buf_inputs, CL_MAP_WRITE);
-memcpy(inputs_dma, inputs)
-clEnqueueUnmapMemObject(buf_inputs, inputs_dma);
-
+// input data is implicitly copied to device memory
 clEnqueueNDRangeKernel();
 
+// this transfers the results to host memory
 int *results_dma = clEnqueueMapBuffer(buf_results, CL_MAP_READ);
-memcpy(results, results_dma)
 clEnqueueUnmapMemObject(buf_results, results_dma);
 
 //TODO: use results

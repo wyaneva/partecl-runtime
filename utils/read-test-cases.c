@@ -268,7 +268,8 @@ int parseArg(char **arg, char **bptr) {
 }
 
 int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
-  int index = 0;
+  int test_index = 0;
+  int line_index = -1;
   char line[100000];
 
   FILE *file = fopen(TC_FILENAME, "r");
@@ -277,12 +278,35 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
     return FAIL;
   }
 
-  while (index < num_test_cases) {
+  //find out how many tests there are in the file
+  int total_num_tests = 0;
+  while (fgets(line, sizeof(line), file) != NULL) {
+    total_num_tests++;
+  }
+  fclose(file);
+
+  // we are using the step to read a distribution of the tests in the file, when we only want a few of them
+  int step = 1;
+  if (num_test_cases < total_num_tests) {
+    step = total_num_tests / num_test_cases;
+    if(total_num_tests % num_test_cases != 0) {
+      step++;
+    }
+  }
+
+  // open the file again to read them
+  file = fopen(TC_FILENAME, "r");
+  while (test_index < num_test_cases) {
     if (fgets(line, sizeof(line), file) == NULL) {
       // reopen the file to read the test cases again
       fclose(file);
       file = fopen(TC_FILENAME, "r");
       fgets(line, sizeof(line), file);
+    }
+
+    line_index++;
+    if(line_index % step != 0) {
+      continue;
     }
 
     char **args = (char **)malloc(sizeof(char *));
@@ -316,7 +340,7 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
       }
     }
 
-    populate_inputs(&inputs[index], argc, args, stdinc, stdins);
+    populate_inputs(&inputs[test_index], argc, args, stdinc, stdins);
 
     // free pointers
     for (int i = 0; i < argc; i++)
@@ -326,7 +350,7 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
     if (stdinc > 0)
       free(stdins[0]);
     free(stdins);
-    index++;
+    test_index++;
   }
   fclose(file);
 

@@ -208,18 +208,18 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  if (do_sort_test_cases) {
+  //if (do_sort_test_cases) {
 
-    if (sort_test_cases_by_length(inputs_par, num_test_cases, SORT_ASCENDING) ==
-        FAIL) {
-      printf("Failed sorting the test cases.\n");
-      return -1;
-    } else {
+    //if (sort_test_cases_by_length(inputs_par, num_test_cases, SORT_ASCENDING) ==
+    //    FAIL) {
+    //  printf("Failed sorting the test cases.\n");
+    //  return -1;
+    //} else {
       printf("SORTED test cases? YES! Ascending? %d\n", SORT_ASCENDING);
-    }
-  } else {
-    printf("SORTED test cases? NO!\n");
-  }
+    //}
+  //} else {
+  //  printf("SORTED test cases? NO!\n");
+  //}
 
   // calculate the number of chunks
   int num_chunks = 0;

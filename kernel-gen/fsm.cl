@@ -173,6 +173,7 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
       copy_word(&valueptr, &lineptr);
 
       param_value = strtol(valueptr, NULL, 10);
+      free(valueptr);
       break;
     }
   }
@@ -258,10 +259,12 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
     // current state
     copy_word(&curtoken, &lineptr);
     short current_state = state_to_decimal(curtoken, state_base);
+    free(curtoken);
 
     // next state
     copy_word(&curtoken, &lineptr);
     transition.next_state = state_to_decimal(curtoken, state_base);
+    free(curtoken);
 
     // output
     copy_word_static(transition.output, &lineptr);

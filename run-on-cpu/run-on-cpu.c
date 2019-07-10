@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  /*
   if (do_sort_test_cases) {
     // sort the test cases
     if (sort_test_cases_by_length(inputs, num_test_cases, SORT_ASCENDING) == FAIL) {
@@ -96,6 +97,7 @@ int main(int argc, char **argv) {
       return -1;
     }
   }
+  */
 
   // execute the main code - TODO: plug it automatically
   int num_transitions;

@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 #if FSM_INPUTS_WITH_OFFSETS
 #pragma omp parallel for default(none)                                         \
     shared(num_test_cases, inputs_offset, results_offset, offsets, transitions, starting_state,       \
-           input_length, output_length) schedule(static)
+           input_length, output_length) schedule(guided)
     for (int j = 0; j < num_test_cases; j++) {
       int offset = offsets[j];
       run_on_cpu(&inputs_offset[offset], &results_offset[offset], transitions, starting_state,
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 #else
 #pragma omp parallel for default(none)                                         \
     shared(num_test_cases, inputs, results, transitions, starting_state,       \
-           input_length, output_length) schedule(static)
+           input_length, output_length) schedule(guided)
     for (int j = 0; j < num_test_cases; j++) {
       run_on_cpu(inputs[j], &results[j], transitions, starting_state,
                  input_length, output_length);

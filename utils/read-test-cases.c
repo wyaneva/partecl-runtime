@@ -267,6 +267,15 @@ int parseArg(char **arg, char **bptr) {
   return PARSED_ARGV;
 }
 
+int is_test_chosen(int total_num, int num_tests) {
+
+  int mult = 100000;
+  float prob = (float)num_tests / total_num;
+  prob *= mult;
+  float res = rand() % mult;
+  return res < prob;
+}
+
 int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
   int test_index = 0;
   int line_index = -1;
@@ -285,6 +294,7 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
   }
   fclose(file);
 
+  /* TODO:
   // we are using the step to read a distribution of the tests in the file, when we only want a few of them
   int step = 1;
   if (num_test_cases < total_num_tests) {
@@ -293,6 +303,7 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
       step++;
     }
   }
+  */
 
   // open the file again to read them
   file = fopen(TC_FILENAME, "r");
@@ -305,9 +316,15 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
     }
 
     line_index++;
+    if(!is_test_chosen(total_num_tests, num_test_cases))
+    {
+      continue;
+    }
+    /* TODO
     if(line_index % step != 0) {
       continue;
     }
+    */
 
     char **args = (char **)malloc(sizeof(char *));
     int argc = 0;

@@ -28,6 +28,8 @@
 #include "../utils/fsm-utils.h"
 #include "../source/constants.h"
 
+#define DO_TEST_DIST 1
+
 #if FSM_INPUTS_WITH_OFFSETS
 int run_main(char *input, char *result, transition *transitions,
              short starting_state, int input_length, int output_length);
@@ -84,10 +86,41 @@ int main(int argc, char **argv) {
   results = (struct partecl_result *)malloc(results_size);
 
   // read the test cases
-  if (read_test_cases(inputs, num_test_cases, NULL) == FAIL) {
+  struct aggr aggregate = {0, 0.0, 0.0};
+  if (read_test_cases(inputs, num_test_cases, &aggregate) == FAIL) {
     printf("Failed reading the test cases.\n");
     return -1;
   }
+
+#if DO_TEST_DIST
+  // write the aggregate in the test analysis file
+  double mean = 0.0;
+  double sd = 0.0;
+  finalise_aggr(aggregate, &mean, &sd);
+
+  // find out the fsm name from the filename
+  char *fsmfilename = (char*)malloc(sizeof(char)*500);
+  char *fsmname = (char*)malloc(sizeof(char)*15);
+  char *token;
+
+  strcpy(fsmfilename, filename);
+  while((token = strsep(&fsmfilename, "//")) != NULL) {
+    strcpy(fsmname, token);
+  }
+
+  // open file to put averages in
+  FILE *analysis_f = fopen(TEST_DIST_FILE, "a");
+  if (analysis_f == NULL) {
+    printf("Error opening file %s!\n", TEST_DIST_FILE);
+    return 0;
+  }
+
+  fprintf(analysis_f, "%s,%d,%f,%f\n", fsmname, num_test_cases, mean, sd);
+  fclose(analysis_f);
+
+  free(fsmfilename);
+  free(fsmname);
+#endif
 
   /*
   if (do_sort_test_cases) {

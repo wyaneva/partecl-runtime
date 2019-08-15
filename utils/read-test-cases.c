@@ -27,154 +27,6 @@
 #define TC_FILENAME "../kernel-gen/tests.txt"
 #define NUMBER_OF_OCTAL_VALUE_CHARACTERS 3
 
-int parseString(char **arg, char **bptr) {
-  assert(**bptr == '"' && "parseString should start with \".");
-  // skip the opening quotes
-  (*bptr)++;
-
-  // create current ptr
-  char *cptr = *bptr;
-
-  // count the characters we want to copy
-  int num_chars = 0;
-  while (*cptr != '"') {
-    if (*cptr == '\\') {
-      char *nextchar = cptr;
-      nextchar++;
-      if (*nextchar == '\\' || *nextchar == '"') {
-        // do not count, skip to the next char
-        cptr++;
-      }
-    }
-    num_chars++;
-    cptr++;
-  }
-
-  // copy the chars to arg
-  cptr = *bptr;
-  *arg = (char *)malloc(sizeof(char) * (num_chars + 1));
-  for (int i = 0; i < num_chars; i++) {
-    if (*cptr == '\\') {
-      char *nextchar = cptr;
-      nextchar++;
-      if (*nextchar == '\\' || *nextchar == '"') {
-        // skip to next char
-        cptr++;
-      }
-    }
-    (*arg)[i] = *cptr;
-    cptr++;
-  }
-  (*arg)[num_chars] = '\0';
-
-  assert(*cptr == '"' && "parseString should end with \".");
-  cptr++;
-  *bptr = cptr;
-  return SUCCESS;
-}
-
-void copyToken(char **token, char **bptr) {
-  // create current ptr
-  char *cptr = *bptr;
-
-  // count the characters we want to copy
-  int num_chars = 0;
-  while (*cptr != ' ' && *cptr != '\n') {
-    num_chars++;
-    cptr++;
-  }
-  cptr = *bptr;
-  *token = (char *)malloc(sizeof(char) * (num_chars + 1));
-
-  int char_position = 0;
-  while (*cptr != '\n' && *cptr != ' ') {
-    // non-printable characters are encoded as \[0-7][0-7][0-7] backslash and 3
-    // octal digits.
-    if (*cptr == '\\') {
-      cptr++;
-      if (*cptr == 'a' || *cptr == 'b' || *cptr == 't' || *cptr == 'n' ||
-          *cptr == 'v' || *cptr == 'f' || *cptr == 'r' || *cptr == '\\') {
-        switch (*cptr) {
-        case 'a':
-          (*token)[char_position] = (char)(7); // ascii value correspinding to
-                                               // \a and similarly for \t \n ...
-          break;
-        case 'b':
-          (*token)[char_position] = (char)(8);
-          break;
-        case 't':
-          (*token)[char_position] = (char)(9);
-          break;
-        case 'n':
-          (*token)[char_position] = (char)(10);
-          break;
-        case 'v':
-          (*token)[char_position] = (char)(11);
-          break;
-        case 'f':
-          (*token)[char_position] = (char)(12);
-          break;
-        case 'r':
-          (*token)[char_position] = (char)(13);
-          break;
-        case '\\':
-          (*token)[char_position] = (char)(92);
-          break;
-        }
-        char_position++;
-        cptr++;
-      } else {
-        cptr--;
-        int count = 0;
-        int decimal_value = 0;
-        // count < 3 is to check the next 3 characters after '\'
-        while (count < NUMBER_OF_OCTAL_VALUE_CHARACTERS && *cptr != '\n' &&
-               *cptr != ' ') {
-          cptr++;
-          if (*cptr > '7' || *cptr < '0') // if the character is not an
-                                          // octal-digit then the input was not
-                                          // an octal value.
-          {
-            count = 0;
-            decimal_value = 0;
-            break;
-          }
-          count++;
-          decimal_value +=
-              (*cptr - '0') * pow(8, NUMBER_OF_OCTAL_VALUE_CHARACTERS - count);
-          // decimal_value is the equivalent decimal value of the octal input.
-          // calculated as follows input octal => /abc = 64*a + 8*b + c
-        }
-
-        // next if branch taken if all the next three characters are all digits.
-
-        if (count == NUMBER_OF_OCTAL_VALUE_CHARACTERS) {
-          (*token)[char_position] =
-              (char)decimal_value; // direct conversion decimal to character
-          char_position++;
-          cptr++;
-        }
-
-        else {
-          (*token)[char_position] = '\\';
-          while (count > 0) {
-            cptr--;
-            count--;
-          }
-
-          char_position++;
-        }
-      }
-    } else {
-      (*token)[char_position] = *cptr;
-      char_position++;
-      cptr++;
-    }
-  }
-  (*token)[char_position] = '\0';
-  *bptr = cptr;
-}
-
 int copyFilename(char **token, char **bptr) {
   // create current ptr
   char *cptr = *bptr;
@@ -233,40 +85,6 @@ int parseStdin(char **arg, char **bptr) {
   return SUCCESS;
 }
 
-int parseArg(char **arg, char **bptr) {
-  // consume starting white spaces
-  while (**bptr == ' ')
-    (*bptr)++;
-
-  if (**bptr == '\n')
-    return SUCCESS;
-
-#if BMRK_C
-  // handle string
-  if (**bptr == '"') {
-    int parse = parseString(arg, bptr);
-    if (parse == SUCCESS)
-      return PARSED_ARGV;
-    else
-      return FAIL;
-  }
-
-  // handle stdin from a file
-  if (**bptr == '<') {
-    int parse = parseStdin(arg, bptr);
-    if (parse == SUCCESS)
-      return PARSED_STDIN;
-    else
-      return FAIL;
-  }
-#endif
-
-  // handle others
-  copyToken(arg, bptr);
-
-  return PARSED_ARGV;
-}
-
 int is_test_chosen(int total_num, int num_tests) {
 
   int mult = 100000;
@@ -276,7 +94,8 @@ int is_test_chosen(int total_num, int num_tests) {
   return res < prob;
 }
 
-int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
+int read_test_cases(struct partecl_input *inputs, int num_test_cases,
+                    struct aggr *aggregate) {
   int test_index = 0;
   int line_index = -1;
   char line[100000];
@@ -358,6 +177,8 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
     }
 
     populate_inputs(&inputs[test_index], argc, args, stdinc, stdins);
+    int length = calculate_test_length(args[argc-1]);
+    update_aggr(aggregate, length);
 
     // free pointers
     for (int i = 0; i < argc; i++)

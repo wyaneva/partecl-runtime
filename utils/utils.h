@@ -17,13 +17,62 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-// return codes
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_TRANSITIONS_PER_STATE 256
+#define NUMBER_OF_OCTAL_VALUE_CHARACTERS 3
+
 #define FAIL 0
 #define SUCCESS 1
 #define PARSED_ARGV 2
 #define PARSED_STDIN 3
 
+struct transition {
+
+  int start_state;
+  int next_state;
+  char transition[5];
+  char output[2];
+};
+
+struct transition_pair {
+
+  int start_state;
+  int next_state;
+  char transition[9];
+  char output[3];
+};
+
+struct transition_pair_visit {
+
+  int start_state;
+  int next_state;
+  int mid_state;
+  char transition[9];
+  int is_visited;
+};
+
+struct aggr {
+
+  int k;
+  double M;
+  double S;
+};
+
 char *read_file(const char *);
 char *concatenate_strings(char *, const char*);
+
+int parseArg(char **, char **);
+int parseString(char **, char **);
+void read_fsm_numbers(const char *, int *, int *, int *, int *);
+
+void copy_word_static(char[], char **);
+int calculate_test_length(char *);
+
+void update_aggr(struct aggr *, int);
+void finalise_aggr(struct aggr, double *, double *);
 
 #endif

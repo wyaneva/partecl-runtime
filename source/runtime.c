@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
   results_par = (struct partecl_result *)malloc(size_results_par);
 
   // read the test cases
-  if (read_test_cases(inputs_par, num_test_cases) == FAIL) {
+  if (read_test_cases(inputs_par, num_test_cases, NULL) == FAIL) {
     printf("Failed reading the test cases.\n");
     return -1;
   }

@@ -1,4 +1,5 @@
 #include "fsm.h"
+#include "../utils/utils.h"
 //#include <math.h>
 //#include <stdbool.h>
 //#include <stdio.h>
@@ -29,7 +30,7 @@ void copy_word(char **token, char **bptr) {
   *bptr = cptr + 1;
 }
 
-void copy_word_static(char token[], char **bptr) {
+void copy_word_static_fsm(char token[], char **bptr) {
   // create current ptr
   char *cptr = *bptr;
   int char_position = 0;
@@ -254,7 +255,7 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
 
     // input
     char input[INPUT_LENGTH_FSM];
-    copy_word_static(input, &lineptr);
+    copy_word_static_fsm(input, &lineptr);
 
     // current state
     copy_word(&curtoken, &lineptr);
@@ -267,7 +268,7 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
     free(curtoken);
 
     // output
-    copy_word_static(transition.output, &lineptr);
+    copy_word_static_fsm(transition.output, &lineptr);
 
     int idx = get_index(current_state, input[0]);
     transitions[idx] = transition;

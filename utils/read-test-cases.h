@@ -18,7 +18,8 @@
 #define READ_TEST_CASES_H
 
 #include "../kernel-gen/structs.h"
+#include "utils.h"
 
-int read_test_cases(struct partecl_input *, int);
+int read_test_cases(struct partecl_input *, int, struct aggr *);
 
 #endif

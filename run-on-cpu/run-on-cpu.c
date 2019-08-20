@@ -28,8 +28,6 @@
 #include "../utils/fsm-utils.h"
 #include "../source/constants.h"
 
-#define DO_TEST_DIST 1
-
 #if FSM_INPUTS_WITH_OFFSETS
 int run_main(char *input, char *result, transition *transitions,
              short starting_state, int input_length, int output_length);

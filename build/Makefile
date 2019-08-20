@@ -1,8 +1,12 @@
 EXECUTABLES = gpu-test cpu-test gpu-test-debug
 
-GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/partecl-runtime/source -I $(HOME)/clClibc/ -DGPU_COMPILED=1\""
+GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/partecl-runtime/source -I $(HOME)/clClibc/ -DGPU_COMPILED=1\"" \
+	    -DDO_TEST_DIST=1 \
+	    -DTEST_DIST_FILE="\"$(HOME)/fsmtesting/2019journal/data/test-analysis/test-suite-size.analysis\"" 
 
-CPU_FLAGS = -DGCC_COMPILED=1 -DTEST_DIST_FILE="\"$(HOME)/fsmtesting/2019journal/data/test-analysis/test-suite-size.analysis\""
+CPU_FLAGS = -DGCC_COMPILED=1 \
+	    -DDO_TEST_DIST=1 \
+	    -DTEST_DIST_FILE="\"$(HOME)/fsmtesting/2019journal/data/test-analysis/test-suite-size.analysis\"" 
 
 all: $(EXECUTABLES)
 

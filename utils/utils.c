@@ -411,3 +411,12 @@ void finalise_aggr(struct aggr existing_aggr, double *mean, double *sd) {
 /*
  END of Welford's Algorithm
 */
+
+int is_test_chosen(int total_num, int num_tests) {
+
+  int mult = 100000;
+  float prob = (float)num_tests / total_num;
+  prob *= mult;
+  float res = rand() % mult;
+  return res < prob;
+}

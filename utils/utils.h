@@ -75,4 +75,6 @@ int calculate_test_length(char *);
 void update_aggr(struct aggr *, int);
 void finalise_aggr(struct aggr, double *, double *);
 
+int is_test_chosen(int, int);
+
 #endif

@@ -4,11 +4,11 @@
 #include "../utils/timing.h"
 #include "../utils/utils.h"
 
-#define NUM_INT 1024*10000
+#define NUM_INT 1024*100000
 //#define NUM_INT 10
 #define NUM_RUNS 50
 //#define NUM_RUNS 1
-#define NUM_CHUNKS 2
+#define NUM_CHUNKS 20
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 
@@ -22,9 +22,10 @@ int main(int argc, const char **argv) {
   create_context_on_gpu(&ctx, &device, 0);
 
   // create two command queues
-  cl_command_queue queue[2];
-  create_command_queue(&queue[0], &ctx, &device);
-  create_command_queue(&queue[1], &ctx, &device);
+  cl_command_queue queue[NUM_CHUNKS];
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    create_command_queue(&queue[i], &ctx, &device);
+  }
 
     // create kernels - one per command queue
   char *knl_text = read_file("kernel.cl");
@@ -32,16 +33,17 @@ int main(int argc, const char **argv) {
     printf("Couldn't read file kernel.c. Exiting!\n");
     return -1;
   }
-  cl_kernel knl[2];
-  knl[0] = kernel_from_string(ctx, knl_text, "kernel_fun", "");
-  knl[1] = kernel_from_string(ctx, knl_text, "kernel_fun", "");
+  cl_kernel knl[NUM_CHUNKS];
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    knl[i] = kernel_from_string(ctx, knl_text, "kernel_fun", "");
+  }
   free(knl_text);
 
   // calculate memory
   int num_inputs = NUM_INT;
-  int num_inputs_chunk = num_inputs / 2;
+  int num_inputs_chunk = num_inputs / NUM_CHUNKS;
   size_t size_inputs_total = sizeof(int) * num_inputs;
-  size_t size_inputs_chunk = size_inputs_total / 2;
+  size_t size_inputs_chunk = size_inputs_total / NUM_CHUNKS;
 
   // calculate workgroup offsets
   size_t goffset[3] = {0, 0, 0};
@@ -50,59 +52,63 @@ int main(int argc, const char **argv) {
   calculate_dimensions(&device, gdim, ldim, num_inputs_chunk, ldim0);
 
   // allocate the OpenCL input and result buffer memory objects on GPU device
-  cl_mem buf_dev_inputs[2];
-  buf_dev_inputs[0] = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_inputs_chunk, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_inputs 0: %d\n", err);
-  buf_dev_inputs[1] = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_inputs_chunk, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_inputs 0: %d\n", err);
+  cl_mem buf_dev_inputs[NUM_CHUNKS];
+  cl_mem buf_dev_results[NUM_CHUNKS];
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    buf_dev_inputs[i] = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_inputs_chunk, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_inputs 0: %d\n", err);
 
-  cl_mem buf_dev_results[2];
-  buf_dev_results[0] = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, size_inputs_total, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_results 0: %d\n", err);
-  buf_dev_results[1] = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, size_inputs_total, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_results 0: %d\n", err);
+    buf_dev_results[i] = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, size_inputs_total, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_dev_results 0: %d\n", err);
+  }
 
   // allocate pinned input and result host buffers
-  cl_mem pinned_host_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_total, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_inputs: %d\n", err);
+  cl_mem pinned_host_inputs[NUM_CHUNKS]; 
+  cl_mem pinned_host_results[NUM_CHUNKS]; 
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    pinned_host_inputs[i] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunk, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_inputs %d: %d\n", i, err);
 
-  cl_mem pinned_host_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_total, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_results: %d\n", err);
+    pinned_host_results[i] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunk, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_results %d: %d\n", i, err);
+  }
 
   // get mapped pointers to pinned host buffers (to access them using standard pointers)
-  int *inputs = (cl_int*)clEnqueueMapBuffer(queue[0], pinned_host_inputs, CL_TRUE, CL_MAP_WRITE, 0, size_inputs_total, 0, NULL, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_inputs: %d\n", err);
+  int *inputs[NUM_CHUNKS];
+  int *results[NUM_CHUNKS];
+  for(int i = 0; i < NUM_CHUNKS; i++) {
 
-  int *results = (cl_int*)clEnqueueMapBuffer(queue[0], pinned_host_results, CL_TRUE, CL_MAP_READ, 0, size_inputs_total, 0, NULL, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_results: %d\n", err);
+    inputs[i] = (cl_int*)clEnqueueMapBuffer(queue[0], pinned_host_inputs[i], CL_TRUE, CL_MAP_WRITE, 0, size_inputs_chunk, 0, NULL, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_inputs: %d\n", err);
+
+    results[i] = (cl_int*)clEnqueueMapBuffer(queue[0], pinned_host_results[i], CL_TRUE, CL_MAP_READ, 0, size_inputs_chunk, 0, NULL, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_results: %d\n", err);
+  }
 
   // populate inputs
-  for (int i = 0; i < num_inputs; i++) {
-    inputs[i] = i;
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    for (int j = 0; j < num_inputs_chunk; j++) {
+      inputs[i][j] = i*num_inputs_chunk + j;
+    }
   }
 
   // set kernel arguments for each kernel instance
-  err = clSetKernelArg(knl[0], 0, sizeof(cl_mem), &buf_dev_inputs[0]);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 0: %d\n", err);
-  err = clSetKernelArg(knl[0], 1, sizeof(cl_mem), &buf_dev_results[0]);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 1: %d\n", err);
-  err = clSetKernelArg(knl[0], 2, sizeof(int), &num_inputs_chunk);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 2: %d\n", err);
-
-  err = clSetKernelArg(knl[1], 0, sizeof(cl_mem), &buf_dev_inputs[1]);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 0: %d\n", err);
-  err = clSetKernelArg(knl[1], 1, sizeof(cl_mem), &buf_dev_results[1]);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 1: %d\n", err);
-  err = clSetKernelArg(knl[1], 2, sizeof(int), &num_inputs_chunk);
-  if (err != CL_SUCCESS) printf("error: clSetKernelArg 2: %d\n", err);
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    err = clSetKernelArg(knl[i], 0, sizeof(cl_mem), &buf_dev_inputs[i]);
+    if (err != CL_SUCCESS) printf("error: clSetKernelArg 0: %d\n", err);
+    err = clSetKernelArg(knl[i], 1, sizeof(cl_mem), &buf_dev_results[i]);
+    if (err != CL_SUCCESS) printf("error: clSetKernelArg 1: %d\n", err);
+    err = clSetKernelArg(knl[i], 2, sizeof(int), &num_inputs_chunk);
+    if (err != CL_SUCCESS) printf("error: clSetKernelArg 2: %d\n", err);
+  }
 
   // flush queues before timing
-  err = clFinish(queue[0]);
-  if (err != CL_SUCCESS) printf("error: clFinish queue[0]: %d\n", err);
-  err = clFinish(queue[1]);
-  if (err != CL_SUCCESS) printf("error: clFinish queue[0]: %d\n", err);
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    err = clFinish(queue[i]);
+    if (err != CL_SUCCESS) printf("error: clFinish queue[0]: %d\n", err);
+  }
 
-  printf("trans-inputs\ttrans-results\texec-kernel\ttime-total\n");
+  printf("trans-inputs\ttrans-results\texec-kernel\trate-inputs\trate-results\ttime-total\n");
   for (int j = 0; j < NUM_RUNS; j++) {
     // declare events
     cl_event event_inputs[NUM_CHUNKS];
@@ -112,36 +118,25 @@ int main(int argc, const char **argv) {
     struct timespec ete_start, ete_end;
     get_timestamp(&ete_start);
 
-    // Nonblocking write of 1st chunk of input data from host to device in queue 0
-    err = clEnqueueWriteBuffer(queue[0], buf_dev_inputs[0], CL_FALSE, 0, size_inputs_chunk, (void*)&inputs[0], 0, NULL, &event_inputs[0]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer buf_dev_inputs 0 queue 0: %d\n", err);
+    for(int i = 0; i < NUM_CHUNKS; i++) {
+      // Nonblocking write of chunk of input data from host to device 
+      err = clEnqueueWriteBuffer(queue[i], buf_dev_inputs[i], CL_FALSE, 0, size_inputs_chunk, (void*)&inputs[i][0], 0, NULL, &event_inputs[i]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer buf_dev_inputs %d: %d\n", i, err);
 
-    // Launch kernel computation queue 0
-    err = clEnqueueNDRangeKernel(queue[0], knl[0], 1, goffset, gdim, ldim, 1, &event_inputs[0], &event_kernel[0]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueNDRangeKernel queue 0: %d\n", err);
+      // Launch kernel computation 
+      err = clEnqueueNDRangeKernel(queue[i], knl[i], 1, goffset, gdim, ldim, 1, &event_inputs[i], &event_kernel[i]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueNDRangeKernel queue %d: %d\n", i, err);
 
-    // Nonblocking write of 2nd chunk of input data from host to device in queue 1
-    err = clEnqueueWriteBuffer(queue[1], buf_dev_inputs[1], CL_FALSE, 0, size_inputs_chunk, (void*)&inputs[num_inputs_chunk], 0, NULL, &event_inputs[1]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer buf_dev_inputs 1 queue 1: %d\n", err);
-
-    // Launch kernel computation queue 1
-    err = clEnqueueNDRangeKernel(queue[1], knl[1], 1, goffset, gdim, ldim, 1, &event_inputs[1], &event_kernel[1]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueNDRangeKernel queue 1: %d\n", err);
-
-    // Nonblocking read of 1st chunk of results from device to host in queue 0
-    err = clEnqueueReadBuffer(queue[0], buf_dev_results[0], CL_FALSE, 0, size_inputs_chunk, (void*)&results[0], 1, &event_kernel[0], &event_results[0]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer buf_dev_results 0 queue 0: %d\n", err);
-
-    // Nonblocking read of 2nd chunk of results from device to host in queue 1
-    err = clEnqueueReadBuffer(queue[1], buf_dev_results[1], CL_FALSE, 0, size_inputs_chunk, (void*)&results[num_inputs_chunk], 1, &event_kernel[1], &event_results[1]);
-    if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer buf_dev_results 1 queue 0: %d\n", err);
+      // Nonblocking read of chunk of results from device to host 
+      err = clEnqueueReadBuffer(queue[i], buf_dev_results[i], CL_FALSE, 0, size_inputs_chunk, (void*)&results[i][0], 1, &event_kernel[i], &event_results[i]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer buf_dev_results %d: %d\n", i, err);
+    }
 
     // Finish the queues
-    err = clFinish(queue[0]);
-    if (err != CL_SUCCESS) printf("error: clFinish queue[0]: %d\n", err);
-
-    err = clFinish(queue[1]);
-    if (err != CL_SUCCESS) printf("error: clFinish queue[1]: %d\n", err);
+    for(int i = 0; i < NUM_CHUNKS; i++) {
+      err = clFinish(queue[i]);
+      if (err != CL_SUCCESS) printf("error: clFinish queue[%d]: %d\n", i, err);
+    }
 
     get_timestamp(&ete_end);
 
@@ -156,7 +151,7 @@ int main(int argc, const char **argv) {
     end_to_end = timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
 
     cl_ulong ev_start_time, ev_end_time;
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < NUM_CHUNKS; i++) {
 
       clGetEventProfilingInfo(event_inputs[i], CL_PROFILING_COMMAND_START,
                             sizeof(cl_ulong), &ev_start_time, NULL);
@@ -176,51 +171,50 @@ int main(int argc, const char **argv) {
                             sizeof(cl_ulong), &ev_end_time, NULL);
       time_kernel = (double)(ev_end_time - ev_start_time) / 1000000;
 
-      transfer_rate_inputs = (size_inputs_chunk * 0.001 * 0.001) / time_inputs;
-      transfer_rate_results = (size_inputs_chunk * 0.001 * 0.001) / time_results;
+      transfer_rate_inputs = (size_inputs_chunk * 0.001 * 0.001) / time_inputs; // in GB/s
+      transfer_rate_results = (size_inputs_chunk * 0.001 * 0.001) / time_results; // in GB/s
 
-      if(i == 1) {
-        printf("%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel, end_to_end);
+      if(i == NUM_CHUNKS-1) {
+        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel, transfer_rate_inputs, transfer_rate_results, end_to_end);
       } else {
-        printf("%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel);
+        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, transfer_rate_inputs, transfer_rate_results, time_kernel);
       }
     }
   }
 
-  // Check results
+  //TODO Check results
   /*
-  for(int i = 0; i < num_inputs; i++) {
-    printf("%d: %d %d\n", i, inputs[i], results[i]);
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    for(int j = 0; j < num_inputs_chunk; j++) {
+      printf("%d %d: %d %d\n", i, j, inputs[i][j], results[i][j]);
+    }
   }
   */
 
   // Cleanup
     
   // Unmap pinned memory
-  err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs, (void*)inputs, 0, NULL, NULL);
-  if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_inputs: %d\n", err);
-  err = clEnqueueUnmapMemObject(queue[0], pinned_host_results, (void*)results, 0, NULL, NULL);
-  if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_results: %d\n", err);
+  for(int i = 0; i < NUM_CHUNKS; i++) {
+    err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs[i], (void*)inputs[i], 0, NULL, NULL);
+    if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_inputs %d: %d\n", i, err);
+    err = clEnqueueUnmapMemObject(queue[0], pinned_host_results[i], (void*)results[i], 0, NULL, NULL);
+    if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_results %d: %d\n", i, err);
 
-  // Free memory buffers
-  err = clReleaseMemObject(buf_dev_inputs[0]);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_dev_inputs 0: %d\n", err);
-  err = clReleaseMemObject(buf_dev_inputs[1]);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_dev_inputs 1: %d\n", err);
-  err = clReleaseMemObject(buf_dev_results[0]);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObjec buf_dev_results 0: %d\n", err);
-  err = clReleaseMemObject(buf_dev_results[1]);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObjec buf_dev_results 1: %d\n", err);
-  err = clReleaseMemObject(pinned_host_inputs);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs: %d\n", err);
-  err = clReleaseMemObject(pinned_host_results);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_results: %d\n", err);
+    // Free memory buffers
+    err = clReleaseMemObject(buf_dev_inputs[i]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_dev_inputs %d: %d\n", i, err);
+    err = clReleaseMemObject(buf_dev_results[i]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObjec buf_dev_results %d: %d\n", i, err);
+    err = clReleaseMemObject(pinned_host_inputs[i]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs %d: %d\n", i, err);
+    err = clReleaseMemObject(pinned_host_results[i]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_results %d: %d\n", i, err);
 
-  // Release command queues and context
-  err = clReleaseKernel(knl[0]);
-  err = clReleaseKernel(knl[1]);
-  err = clReleaseCommandQueue(queue[0]);
-  err = clReleaseCommandQueue(queue[1]);
+    // Release command queues and context
+    err = clReleaseKernel(knl[i]);
+    err = clReleaseCommandQueue(queue[i]);
+  }
+
   err = clReleaseContext(ctx);
   free(device);
   return 0;

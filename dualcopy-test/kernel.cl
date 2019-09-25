@@ -4,7 +4,7 @@ kernel void kernel_fun(global int *inputs, global int *results, int n) {
 
   if (idx < n) {
 
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 5; i++) {
       results[idx] = inputs[idx] + 1;
     }
   }

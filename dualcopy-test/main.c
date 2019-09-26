@@ -4,11 +4,11 @@
 #include "../utils/timing.h"
 #include "../utils/utils.h"
 
-#define NUM_INT 1024*100000
+#define NUM_INT 1024*10000
 //#define NUM_INT 10
-#define NUM_RUNS 50
+#define NUM_RUNS 20 
 //#define NUM_RUNS 1
-#define NUM_CHUNKS 20
+#define NUM_CHUNKS 6
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 
@@ -109,6 +109,7 @@ int main(int argc, const char **argv) {
   }
 
   printf("trans-inputs\ttrans-results\texec-kernel\trate-inputs\trate-results\ttime-total\n");
+  //printf("trans-inputs\ttrans-results\texec-kernel\ttime-total\n");
   for (int j = 0; j < NUM_RUNS; j++) {
     // declare events
     cl_event event_inputs[NUM_CHUNKS];
@@ -175,9 +176,13 @@ int main(int argc, const char **argv) {
       transfer_rate_results = (size_inputs_chunk * 0.001 * 0.001) / time_results; // in GB/s
 
       if(i == NUM_CHUNKS-1) {
-        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel, transfer_rate_inputs, transfer_rate_results, end_to_end);
+        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel, 
+            transfer_rate_inputs, transfer_rate_results, end_to_end);
+        //printf("%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel, end_to_end);
       } else {
-        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, transfer_rate_inputs, transfer_rate_results, time_kernel);
+        printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel,
+            transfer_rate_inputs, transfer_rate_results);
+        //printf("%.6f\t%.6f\t%.6f\n", time_inputs, time_results, time_kernel);
       }
     }
   }

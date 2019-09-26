@@ -19,7 +19,9 @@ fi
 echo "Build done"
 
 # run the code
+echo "Running gpu"
 ./../build/gpu-test $NUM_TESTS -results Y -time N -runs 1 -filename $FSM_FILENAME -chunksize $CHUNKSIZE -sort $DO_SORT > gpu.correctness 2>> $output_file
+echo "Running cpu"
 ./../build/openmp-run.sh $NUM_TESTS N Y 1 $NUM_CPU_THREADS $FSM_FILENAME $DO_SORT > cpu.correctness 2>> $output_file
 
 # remove control lines (ones which do not show test case results)
@@ -35,5 +37,5 @@ else
   echo 1
 fi
 
-rm gpu.correctness
-rm cpu.correctness
+#rm gpu.correctness
+#rm cpu.correctness

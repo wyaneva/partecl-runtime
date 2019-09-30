@@ -35,7 +35,9 @@ then
   echo -1
 else
   echo 1
+  rm gpu.correctness
+  rm cpu.correctness
+  rm diff.result
+  rm compare.out
 fi
 
-#rm gpu.correctness
-#rm cpu.correctness

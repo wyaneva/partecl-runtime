@@ -663,8 +663,6 @@ int main(int argc, char **argv) {
 #if DMA
       err = clEnqueueReadBuffer(queue[j], buf_results[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
 
-      // Copy into results_chunks
-      memcpy(results_chunks[j], results_dma[j], size_inputs_chunks[j]);
 #else
 
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE,
@@ -741,65 +739,71 @@ int main(int argc, char **argv) {
         }
       }
     }
+  }
 
-    // TODO: Maybe move results before cleanup
+  // Reconstruct and check results
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+   // Copy results into results_chunks
+   for(int j = 0; j < num_chunks; j++) {
+     memcpy(results_chunks[j], results_dma[j], size_inputs_chunks[j]);
+   }
+#endif
+
 #if FSM_INPUTS_WITH_OFFSETS
-    results_with_offsets_to_partecl_results(results_offset, results_par,
-                                            total_number_of_inputs, offsets,
-                                            num_test_cases);
+  results_with_offsets_to_partecl_results(results_offset, results_par,
+                                          total_number_of_inputs, offsets,
+                                          num_test_cases);
 #else
 #if FSM_INPUTS_COAL_CHAR
-    struct partecl_result *results_parptr = results_par;
-    for (int j = 0; j < num_chunks; j++) {
+  struct partecl_result *results_parptr = results_par;
+  for (int j = 0; j < num_chunks; j++) {
 
-      int max_input_size = padded_input_size_chunks[j];
-      int num_tests = num_tests_chunks[j];
-      transpose_results_back_char(results_chunks[j], results_parptr,
-                                  max_input_size, num_tests);
-      results_parptr += num_tests;
-    }
+    int max_input_size = padded_input_size_chunks[j];
+    int num_tests = num_tests_chunks[j];
+    transpose_results_back_char(results_chunks[j], results_parptr, max_input_size, num_tests);
+    results_parptr += num_tests;
+  }
 #else
 #if FSM_INPUTS_COAL_CHAR4
-    for (int i = 0; i < num_test_cases; i++) {
-      char *outputptr = results_par[i].output;
-      int reached_end = 0;
-      for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
+  for (int i = 0; i < num_test_cases; i++) {
+    char *outputptr = results_par[i].output;
+    int reached_end = 0;
+    for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
            j += num_test_cases) {
-        if (reached_end) {
+      if (reached_end) {
+        break;
+      }
+
+      for (int k = 0; k < CHAR_N; k++) {
+        *outputptr = results_coal_char4[j].s[k];
+        if (*outputptr == '\0') {
+          reached_end = 1;
           break;
         }
-
-        for (int k = 0; k < CHAR_N; k++) {
-          *outputptr = results_coal_char4[j].s[k];
-          if (*outputptr == '\0') {
-            reached_end = 1;
-            break;
-          }
-          outputptr++;
-        }
+        outputptr++;
       }
     }
-#else
-    struct partecl_result *results_parptr = results_par;
-    for (int j = 0; j < num_chunks; j++) {
-      char *resultsptr = results_chunks[j];
-      for (int i = 0; i < num_tests_chunks[j]; i++) {
-        int padded_size = padded_input_size_chunks[j];
-        for (int k = 0; k < padded_size; k++) {
-          (*results_parptr).output[k] = *resultsptr;
-          resultsptr++;
-        }
-        results_parptr++;
-      }
-    }
-#endif
-#endif
-#endif
-
-    // check results
-    if (do_compare_results)
-      compare_results(results_par, exp_results, num_test_cases);
   }
+#else
+  struct partecl_result *results_parptr = results_par;
+  for (int j = 0; j < num_chunks; j++) {
+    char *resultsptr = results_chunks[j];
+    for (int i = 0; i < num_tests_chunks[j]; i++) {
+      int padded_size = padded_input_size_chunks[j];
+      for (int k = 0; k < padded_size; k++) {
+        (*results_parptr).output[k] = *resultsptr;
+        resultsptr++;
+      }
+      results_parptr++;
+    }
+  }
+#endif
+#endif
+#endif
+
+  // check results
+  if (do_compare_results)
+    compare_results(results_par, exp_results, num_test_cases);
 
   // Cleanup
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA

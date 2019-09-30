@@ -838,6 +838,7 @@ int main(int argc, char **argv) {
 #endif
 #if FSM_INPUTS_COAL_CHAR4
   free(inputs_coal_char4);
+  free(results_coal_char4);
 #endif
 #if FSM_INPUTS_WITH_OFFSETS
   free(inputs_offset);

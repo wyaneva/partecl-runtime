@@ -86,41 +86,33 @@ void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs,
                           int *input_length, int *output_length,
                           int *num_test_cases) {
   cl_int err = clSetKernelArg(*knl, 0, sizeof(cl_mem), buf_inputs);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg 0: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg 0: %d\n", err);
 
   err = clSetKernelArg(*knl, 1, sizeof(cl_mem), buf_results);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg 1: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg 1: %d\n", err);
 
 #if FSM_INPUTS_WITH_OFFSETS
   err = clSetKernelArg(*knl, 2, sizeof(cl_mem), buf_offsets);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg 2: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg 2: %d\n", err);
 #endif
 
   err = clSetKernelArg(*knl, KNL_ARG_TRANSITIONS, sizeof(cl_mem),
                        buf_transitions);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg %d: %d\n", KNL_ARG_TRANSITIONS, err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_TRANSITIONS, err);
 
   err =
       clSetKernelArg(*knl, KNL_ARG_STARTING_STATE, sizeof(int), starting_state);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg %d: %d\n", KNL_ARG_STARTING_STATE, err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_STARTING_STATE, err);
 
   err = clSetKernelArg(*knl, KNL_ARG_INPUT_LENGTH, sizeof(int), input_length);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg %d: %d\n", KNL_ARG_INPUT_LENGTH, err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_INPUT_LENGTH, err);
 
   err = clSetKernelArg(*knl, KNL_ARG_OUTPUT_LENGTH, sizeof(int), output_length);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg %d: %d\n", KNL_ARG_OUTPUT_LENGTH, err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_OUTPUT_LENGTH, err);
 
   err =
       clSetKernelArg(*knl, KNL_ARG_NUM_TEST_CASES, sizeof(int), num_test_cases);
-  if (err != CL_SUCCESS)
-    printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
+  if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 }
 
 int main(int argc, char **argv) {
@@ -456,31 +448,22 @@ int main(int argc, char **argv) {
 
   // Allocate OpenCL device buffers
 #if FSM_INPUTS_WITH_OFFSETS
-  cl_mem buf_inputs =
-    clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
-  if (err != CL_SUCCESS)
-    printf("error: clCreateBuffer buf_inputs: %d\n", err);
+  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
-  cl_mem buf_results =
-    clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
-  if (err != CL_SUCCESS)
-    printf("error: clCreateBuffer buf_results: %d\n", err);
+  cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
 
-  cl_mem buf_offsets = clCreateBuffer(
-    ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
-  if (err != CL_SUCCESS)
-    printf("error: clCreateBuffer buf_offsets: %d\n", err);
+  cl_mem buf_offsets = clCreateBuffer(ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_offsets: %d\n", err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
-  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
-                                       size_inputs_coal_char4, NULL, &err);
-  if (err != CL_SUCCESS)
-    printf("error: clCreateBuffer buf_inputs: %d\n", err);
+  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal_char4, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
   cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE,
                                         size_inputs_coal_char4, NULL, &err);
-  if (err != CL_SUCCESS)
-    printf("error: clCreateBuffer buf_results: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
 #if DMA
   // we allocate buffers separately for every chunk
@@ -568,8 +551,7 @@ int main(int argc, char **argv) {
   // Flush queues before timing
   for (int j = 0; j < num_chunks; j++) {
     err = clFinish(queue[j]);
-    if (err != CL_SUCCESS)
-      printf("error: clFinish queue %d: %d\n", j, err);
+    if (err != CL_SUCCESS) printf("error: clFinish queue %d: %d\n", j, err);
   }
 
   // declare events
@@ -596,45 +578,38 @@ int main(int argc, char **argv) {
       err = clEnqueueWriteBuffer(queue[j], buf_offsets, CL_FALSE, 0,
                                  sizeof(int) * num_test_cases, offsets, 0, NULL,
                                  &event_offsets[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0,
                                  size_inputs_offset, inputs_offset, 1,
                                  &event_offsets[j], &event_inputs[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
 #else
 #if FSM_INPUTS_COAL_CHAR4
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0,
                                  size_inputs_coal_char4, inputs_coal_char4, 0,
                                  NULL, &event_inputs[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
 #if DMA
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueCopyBuffer %d: %d\n", j, err);
-
 #else
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE,
                                  buf_offsets_chunks[j], size_inputs_chunks[j],
                                  inputs_chunks[j], num_waits, wait_event,
                                  &event_inputs[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #endif
 
 #if !FSM_INPUTS_COAL_CHAR
       // set the padded size argument for the kernel
       err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int),
                            &padded_input_size_chunks[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clSetKernelArg %d chunk %d: %d\n",
-               KNL_ARG_PADDED_INPUT_SIZE, j, err);
+      if (err != CL_SUCCESS) printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 
 #endif
@@ -649,15 +624,13 @@ int main(int argc, char **argv) {
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0,
                                 size_inputs_offset, results_offset, 1,
                                 &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
 #if FSM_INPUTS_COAL_CHAR4
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0,
                                 size_inputs_coal_char4, results_coal_char4, 1,
                                 &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
 
 #if DMA
@@ -669,8 +642,7 @@ int main(int argc, char **argv) {
                                 buf_offsets_chunks[j], size_inputs_chunks[j],
                                 results_chunks[j], 1, &event_kernel[j],
                                 &event_results[j]);
-      if (err != CL_SUCCESS)
-        printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #endif
 #endif
 #endif
@@ -826,12 +798,10 @@ int main(int argc, char **argv) {
   }
 #else
     err = clReleaseMemObject(buf_inputs);
-    if (err != CL_SUCCESS)
-      printf("error: clReleaseMemObject: %d\n", err);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject: %d\n", err);
 
     err = clReleaseMemObject(buf_results);
-    if (err != CL_SUCCESS)
-      printf("error: clReleaseMemObjec: %d\n", err);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObjec: %d\n", err);
 #endif
 
     err = clReleaseMemObject(buf_transitions);
@@ -839,8 +809,7 @@ int main(int argc, char **argv) {
 
 #if FSM_INPUTS_WITH_OFFSETS
     err = clReleaseMemObject(buf_offsets);
-    if (err != CL_SUCCESS)
-      printf("error: clReleaseMemObjec: %d\n", err);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObjec: %d\n", err);
 #endif
 
     for (int j = 0; j < num_chunks; j++) {
@@ -884,15 +853,13 @@ void pad_test_case_number(const cl_device_id *device, int *num_test_cases) {
   cl_uint num_dims;
   err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
                         sizeof(num_dims), &num_dims, NULL);
-  if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n",
+  if (err != CL_SUCCESS) printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n",
            err);
 
   size_t dims[num_dims];
   err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims),
                         dims, NULL);
-  if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
 
   if (*num_test_cases % dims[0] != 0) {
     int coef = *num_test_cases / dims[0];
@@ -908,15 +875,12 @@ void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],
   cl_uint num_dims;
   err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
                         sizeof(num_dims), &num_dims, NULL);
-  if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n",
-           err);
+  if (err != CL_SUCCESS) printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS: %d\n", err);
 
   size_t dims[num_dims];
   err = clGetDeviceInfo(*device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(dims),
                         dims, NULL);
-  if (err != CL_SUCCESS)
-    printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
+  if (err != CL_SUCCESS) printf("error: clGetDeviceInfo CL_DEVICE_MAX_WORK_ITEM_SIZES: %d\n", err);
 
   // calculate local dimension
   int ldim0 = num_test_cases;

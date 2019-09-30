@@ -8,7 +8,7 @@
 //#define NUM_INT 10
 #define NUM_RUNS 20 
 //#define NUM_RUNS 1
-#define NUM_CHUNKS 6
+#define NUM_CHUNKS 4
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 
@@ -198,8 +198,8 @@ int main(int argc, const char **argv) {
 
   // Cleanup
     
-  // Unmap pinned memory
   for(int i = 0; i < NUM_CHUNKS; i++) {
+    // Unmap pinned memory
     err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs[i], (void*)inputs[i], 0, NULL, NULL);
     if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_inputs %d: %d\n", i, err);
     err = clEnqueueUnmapMemObject(queue[0], pinned_host_results[i], (void*)results[i], 0, NULL, NULL);

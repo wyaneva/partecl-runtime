@@ -112,6 +112,10 @@ void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs,
   if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 }
 
+void runGpuExecution(int, int, int, 
+                     cl_command_queue[], cl_kernel[], 
+                     size_t[3], size_t[][3], size_t[][3],
+                     cl_mem[], cl_mem[], size_t[], char*[], char*[]);
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -375,6 +379,18 @@ int main(int argc, char **argv) {
   if (do_compare_results)
     read_expected_results(exp_results, num_test_cases);
 
+  // clalculate dimensions
+  size_t goffset[3] = {0, 0, 0};
+  size_t gdim[num_chunks][3], ldim[num_chunks][3]; // assuming three dimensions
+  for (int j = 0; j < num_chunks; j++) {
+    int num_tests = num_test_cases;
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
+    num_tests = num_tests_chunks[j];
+#endif
+    calculate_dimensions(&device, gdim[j], ldim[j], num_tests, ldim0);
+    printf("LDIM = %zd, chunks = %d\n", ldim[j][0], num_chunks);
+  }
+
   // create queues 
   cl_command_queue queue[num_chunks];
   for(int i = 0; i < num_chunks; i++) {
@@ -430,18 +446,6 @@ int main(int argc, char **argv) {
       knl[j] = kernel_from_string(ctx, knl_text, KERNEL_NAME, kernel_options);
   }
   free(knl_text);
-
-  // clalculate dimensions
-  size_t goffset[3] = {0, 0, 0};
-  size_t gdim[num_chunks][3], ldim[num_chunks][3]; // assuming three dimensions
-  for (int j = 0; j < num_chunks; j++) {
-    int num_tests = num_test_cases;
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
-    num_tests = num_tests_chunks[j];
-#endif
-    calculate_dimensions(&device, gdim[j], ldim[j], num_tests, ldim0);
-    printf("LDIM = %zd, chunks = %d\n", ldim[j][0], num_chunks);
-  }
 
   // Allocate OpenCL device buffers
 #if FSM_INPUTS_WITH_OFFSETS
@@ -550,147 +554,17 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS) printf("error: clFinish queue %d: %d\n", j, err);
   }
 
-  // declare events
-  cl_event event_inputs[num_chunks];
-  cl_event event_offsets[num_chunks];
-  cl_event event_kernel[num_chunks];
-  cl_event event_results[num_chunks];
-
   // Start execution
   if (do_time) {
     printf("Time in ms\n");
     printf("trans-inputs\ttrans-results\texec-kernel\ttrans-rate-in\ttrans-rate-res\ttime-total\n");
   }
-  for (int i = 0; i < num_runs; i++) {
 
-    // timing variables for beginning and end
-    struct timespec ete_start, ete_end;
-    get_timestamp(&ete_start);
-    for (int j = 0; j < num_chunks; j++) {
-
-      // transfer input host to device
-      
-#if FSM_INPUTS_WITH_OFFSETS
-      err = clEnqueueWriteBuffer(queue[j], buf_offsets, CL_FALSE, 0, sizeof(int) * num_test_cases, offsets, 0, NULL, &event_offsets[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_offset, inputs_offset, 1, &event_offsets[j], &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-
-#else
-#if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_coal_char4, inputs_coal_char4, 0, NULL, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-#else
-#if DMA
-
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueCopyBuffer %d: %d\n", j, err);
-#else
-
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-#endif
-
-#if !FSM_INPUTS_COAL_CHAR
-      // set the padded size argument for the kernel
-      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
-      if (err != CL_SUCCESS) printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
-#endif
-
-#endif
-#endif
-
-        // launch kernel
-      err = clEnqueueNDRangeKernel(queue[j], knl[j], 1, goffset, gdim[j], ldim[j], 1, &event_inputs[j], &event_kernel[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
-
-      // transfer results device to host
-#if FSM_INPUTS_WITH_OFFSETS
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_offset, results_offset, 1, &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#else
-#if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_coal_char4, results_coal_char4, 1, &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#else
-
-#if DMA
-      err = clEnqueueReadBuffer(queue[j], buf_results[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
-
-#else
-
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], results_chunks[j], 1, &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#endif
-#endif
-#endif
-    }
-
-    // finish the queues 
-    for (int j = 0; j < num_chunks; j++) {
-      err = clFinish(queue[j]);
-      if (err != CL_SUCCESS) printf("error: clFinish queue %d: %d\n", j, err);
-    }
-
-    get_timestamp(&ete_end);
-
-    double trans_fsm = 0.0;
-    double trans_inputs = 0.0;
-    double trans_results = 0.0;
-    double time_gpu = 0.0;
-    double end_to_end = 0.0;
-
-    // gather performance data
-    cl_ulong ev_start_time, ev_end_time;
-    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_START,
-                            sizeof(cl_ulong), &ev_start_time, NULL);
-    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_END,
-                            sizeof(cl_ulong), &ev_end_time, NULL);
-    trans_fsm += (double)(ev_end_time - ev_start_time) / 1000000;
-
-    double total_inputs = 0.0;
-    double total_results = 0.0;
-    double total_gpu = 0.0;
-    for (int j = 0; j < num_chunks; j++) {
-      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
-                              sizeof(cl_ulong), &ev_start_time, NULL);
-      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END,
-                              sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_inputs = (double)(ev_end_time - ev_start_time) / 1000000;
-      total_inputs += trans_inputs;
-
-      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START,
-                              sizeof(cl_ulong), &ev_start_time, NULL);
-      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_END,
-                              sizeof(cl_ulong), &ev_end_time, NULL);
-      trans_results = (double)(ev_end_time - ev_start_time) / 1000000;
-      total_results += trans_results;
-
-      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_START,
-                              sizeof(cl_ulong), &ev_start_time, NULL);
-      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END,
-                              sizeof(cl_ulong), &ev_end_time, NULL);
-      time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
-      total_gpu += time_gpu;
-
-      double trans_rate_inputs = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_inputs;
-      double trans_rate_results = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_results;
-      if (do_time) {
-        if (j == num_chunks - 1) {
-          end_to_end =
-              timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
-          printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
-                 time_gpu, trans_rate_inputs, trans_rate_results, end_to_end);
-          printf("totals: %.6f\t%.6f\t%.6f\t%.6f\n", total_inputs,
-                 total_results, total_gpu,
-                 total_inputs + total_results + total_gpu);
-        } else {
-          printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu, trans_rate_inputs, trans_rate_results);
-        }
-      }
-    }
-  }
+  runGpuExecution(num_runs, num_chunks, do_time, 
+                  queue, knl, 
+                  goffset, gdim, ldim,
+                  buf_inputs, buf_results, size_inputs_chunks, 
+                  inputs_dma, results_dma);
 
   // Reconstruct and check results
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
@@ -792,14 +666,6 @@ int main(int argc, char **argv) {
 #endif
 
     for (int j = 0; j < num_chunks; j++) {
-      // Release events
-      err = clReleaseEvent(event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_inputs) %d: %d\n", j, err);
-      err = clReleaseEvent(event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_results) %d: %d\n", j, err);
-      err = clReleaseEvent(event_kernel[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_kernel) %d: %d\n", j, err);
-
       // Release command queues and kernels
       err = clReleaseKernel(knl[j]);
       if (err != CL_SUCCESS) printf("error: clReleaseKernel %d: %d\n", j, err);
@@ -824,6 +690,164 @@ int main(int argc, char **argv) {
   free(results_offset);
   free(offsets);
 #endif
+}
+
+void runGpuExecution(int num_runs, int num_chunks, int do_time, 
+                     cl_command_queue queue[], cl_kernel knl[], 
+                     size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
+                     cl_mem buf_inputs[], cl_mem buf_results[], 
+                     size_t size_inputs_chunks[], 
+                     char* inputs_dma[], char* results_dma[]) {
+
+  cl_int err;
+  // declare events
+  cl_event event_inputs[num_chunks];
+  cl_event event_offsets[num_chunks];
+  cl_event event_kernel[num_chunks];
+  cl_event event_results[num_chunks];
+
+  for (int i = 0; i < num_runs; i++) {
+
+    // timing variables for beginning and end
+    struct timespec ete_start, ete_end;
+    get_timestamp(&ete_start);
+    for (int j = 0; j < num_chunks; j++) {
+
+      // transfer input host to device
+      
+#if FSM_INPUTS_WITH_OFFSETS
+      err = clEnqueueWriteBuffer(queue[j], buf_offsets, CL_FALSE, 0, sizeof(int) * num_test_cases, offsets, 0, NULL, &event_offsets[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_offset, inputs_offset, 1, &event_offsets[j], &event_inputs[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+
+#else
+#if FSM_INPUTS_COAL_CHAR4
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_coal_char4, inputs_coal_char4, 0, NULL, &event_inputs[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#else
+#if DMA
+
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueCopyBuffer %d: %d\n", j, err);
+#else
+
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
+#endif
+
+#if !FSM_INPUTS_COAL_CHAR
+      // set the padded size argument for the kernel
+      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
+      if (err != CL_SUCCESS) printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
+#endif
+
+#endif
+#endif
+
+        // launch kernel
+      err = clEnqueueNDRangeKernel(queue[j], knl[j], 1, goffset, gdim[j], ldim[j], 1, &event_inputs[j], &event_kernel[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueNDRangeKernel %d: %d\n", j, err);
+
+      // transfer results device to host
+#if FSM_INPUTS_WITH_OFFSETS
+      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_offset, results_offset, 1, &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+#else
+#if FSM_INPUTS_COAL_CHAR4
+      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_coal_char4, results_coal_char4, 1, &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+#else
+
+#if DMA
+      err = clEnqueueReadBuffer(queue[j], buf_results[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
+
+#else
+
+      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], results_chunks[j], 1, &event_kernel[j], &event_results[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
+#endif
+#endif
+#endif
+    }
+
+    // finish the queues 
+    for (int j = 0; j < num_chunks; j++) {
+      err = clFinish(queue[j]);
+      if (err != CL_SUCCESS) printf("error: clFinish queue %d: %d\n", j, err);
+    }
+
+    get_timestamp(&ete_end);
+
+    double trans_inputs = 0.0;
+    double trans_results = 0.0;
+    double time_gpu = 0.0;
+    double end_to_end = 0.0;
+
+    // gather performance data
+    cl_ulong ev_start_time, ev_end_time;
+
+    /* Time to transfer the FSM - never actually used
+    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_START,
+                            sizeof(cl_ulong), &ev_start_time, NULL);
+    clGetEventProfilingInfo(event_fsm, CL_PROFILING_COMMAND_END,
+                            sizeof(cl_ulong), &ev_end_time, NULL);
+    double trans_fsm += (double)(ev_end_time - ev_start_time) / 1000000;
+    */
+
+    double total_inputs = 0.0;
+    double total_results = 0.0;
+    double total_gpu = 0.0;
+    for (int j = 0; j < num_chunks; j++) {
+      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_START,
+                              sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_inputs[j], CL_PROFILING_COMMAND_END,
+                              sizeof(cl_ulong), &ev_end_time, NULL);
+      trans_inputs = (double)(ev_end_time - ev_start_time) / 1000000;
+      total_inputs += trans_inputs;
+
+      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_START,
+                              sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_results[j], CL_PROFILING_COMMAND_END,
+                              sizeof(cl_ulong), &ev_end_time, NULL);
+      trans_results = (double)(ev_end_time - ev_start_time) / 1000000;
+      total_results += trans_results;
+
+      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_START,
+                              sizeof(cl_ulong), &ev_start_time, NULL);
+      clGetEventProfilingInfo(event_kernel[j], CL_PROFILING_COMMAND_END,
+                              sizeof(cl_ulong), &ev_end_time, NULL);
+      time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
+      total_gpu += time_gpu;
+
+      double trans_rate_inputs = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_inputs;
+      double trans_rate_results = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_results;
+      if (do_time) {
+        if (j == num_chunks - 1) {
+          end_to_end =
+              timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
+          printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
+                 time_gpu, trans_rate_inputs, trans_rate_results, end_to_end);
+          printf("totals: %.6f\t%.6f\t%.6f\t%.6f\n", total_inputs,
+                 total_results, total_gpu,
+                 total_inputs + total_results + total_gpu);
+        } else {
+          printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu, trans_rate_inputs, trans_rate_results);
+        }
+      }
+    }
+  }
+
+  // Release events
+  for(int j = 0; j < num_chunks; j++) {
+    err = clReleaseEvent(event_inputs[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_inputs) %d: %d\n", j, err);
+    err = clReleaseEvent(event_results[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_results) %d: %d\n", j, err);
+    err = clReleaseEvent(event_kernel[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseEvent (event_kernel) %d: %d\n", j, err);
+  }
 }
 
 void pad_test_case_number(const cl_device_id *device, int *num_test_cases) {

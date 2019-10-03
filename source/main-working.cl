@@ -28,7 +28,7 @@ short lookup_symbol(FSM_ATTR transition transitions[], short current_state,
   if (trans.next_state == -1) {
     printf("\nCouldn't find transition for state %d, input %c.\n",
            current_state, input);
-    return current_state;
+    return -1;
   }
 
   *output_ptr = *(trans.output);
@@ -103,7 +103,7 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 #if FSM_INPUTS_COAL_CHAR4
   while (true) {
 #else
-  while (*input_ptr != '\0') {
+  while (*input_ptr != '\0' && current_state >=0 ) {
 #endif
 
 #if FSM_INPUTS_COAL_CHAR4
@@ -157,3 +157,4 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
   *output_ptr ='\0';
 #endif
 }
+

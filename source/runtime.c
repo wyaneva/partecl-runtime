@@ -77,6 +77,7 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const int num_test_cases, const int size_chunks,
                              int *padded_input_chunks, int *inputs_chunks,
                              size_t *size_inputs_chunks,
+                             size_t *size_inputs_chunks_max,
                              size_t *buf_offsets_chunks,
                              const cl_device_id *device);
 
@@ -115,7 +116,7 @@ void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs,
 void runGpuExecution(int, int, int, 
                      cl_command_queue[], cl_kernel[], 
                      size_t[3], size_t[][3], size_t[][3],
-                     cl_mem[], cl_mem[], size_t[], char*[], char*[]);
+                     cl_mem, cl_mem, size_t[], char*[], char*[]);
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -251,7 +252,7 @@ int main(int argc, char **argv) {
 
   // calculate the number of chunks and total size dynamically
   calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
-                          num_test_cases, size_chunks, NULL, NULL, NULL, NULL,
+                          num_test_cases, size_chunks, NULL, NULL, NULL, NULL, NULL,
                           &device);
 
   // calculate arrays for chunks
@@ -260,12 +261,14 @@ int main(int argc, char **argv) {
   size_t buf_offsets_chunks[num_chunks];
   int padded_input_size_chunks[num_chunks];
 
+  size_t size_inputs_chunks_max;
+
   // calculating again so set to 0
   num_chunks = 0;
   size_inputs_total = 0;
   calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
                           num_test_cases, size_chunks, padded_input_size_chunks,
-                          num_tests_chunks, size_inputs_chunks,
+                          num_tests_chunks, size_inputs_chunks, &size_inputs_chunks_max,
                           buf_offsets_chunks, &device);
 
   // allocate & populate inputs and results
@@ -466,17 +469,14 @@ int main(int argc, char **argv) {
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
 #else
 #if DMA
-  // we allocate buffers separately for every chunk
-  cl_mem buf_inputs[num_chunks];
-  cl_mem buf_results[num_chunks];
+  cl_mem buf_inputs;
+  cl_mem buf_results;
 
-  for (int j = 0; j < num_chunks; j++) {
-    buf_inputs[j] = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_inputs_chunks[j], NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs[%d]: %d\n", j, err);
+  buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_inputs_chunks_max, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
-    buf_results[j] = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, size_inputs_chunks[j], NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results[%d]: %d\n", j, err);
-  }
+  buf_results = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, size_inputs_chunks_max, NULL, &err);
+  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
 
 #else
   cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_total, NULL, &err);
@@ -523,7 +523,7 @@ int main(int argc, char **argv) {
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
   // the inputs and results arguments are different for each chunk
   for (int j = 0; j < num_chunks; j++) {
-    add_kernel_arguments(&knl[j], &buf_inputs[j], &buf_results[j], NULL,
+    add_kernel_arguments(&knl[j], &buf_inputs, &buf_results, NULL,
                            &buf_transitions, &starting_state, &input_length,
                            &output_length, &num_test_cases);
   }
@@ -632,6 +632,12 @@ int main(int argc, char **argv) {
 
   // Cleanup
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+  // Free device memory buffers
+  err = clReleaseMemObject(buf_inputs);
+  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_inputs: %d\n", err);
+  err = clReleaseMemObject(buf_results);
+  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_results: %d\n", err);
+
   for (int j = 0; j < num_chunks; j++) {
     // unmap pinned memory
     err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs[j], (void*)inputs_dma[j], 0, NULL, NULL);
@@ -639,15 +645,11 @@ int main(int argc, char **argv) {
     err = clEnqueueUnmapMemObject(queue[0], pinned_host_results[j], (void*)results_dma[j], 0, NULL, NULL);
     if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_results[%d]: %d\n", j, err);
 
-    // free memory buffers for all chunks
-      err = clReleaseMemObject(buf_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_inputs[%d]: %d\n", j, err);
-      err = clReleaseMemObject(buf_results[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_results[%d]: %d\n", j, err);
-      err = clReleaseMemObject(pinned_host_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs[%d]: %d\n", j, err);
-      err = clReleaseMemObject(pinned_host_results[j]);
-      if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_results[%d]: %d\n", j, err);
+    // free host memory buffers for all chunks
+    err = clReleaseMemObject(pinned_host_inputs[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs[%d]: %d\n", j, err);
+    err = clReleaseMemObject(pinned_host_results[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_results[%d]: %d\n", j, err);
   }
 #else
     err = clReleaseMemObject(buf_inputs);
@@ -695,7 +697,7 @@ int main(int argc, char **argv) {
 void runGpuExecution(int num_runs, int num_chunks, int do_time, 
                      cl_command_queue queue[], cl_kernel knl[], 
                      size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
-                     cl_mem buf_inputs[], cl_mem buf_results[], 
+                     cl_mem buf_inputs, cl_mem buf_results, 
                      size_t size_inputs_chunks[], 
                      char* inputs_dma[], char* results_dma[]) {
 
@@ -729,8 +731,8 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 #else
 #if DMA
 
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueCopyBuffer %d: %d\n", j, err);
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
+      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
@@ -761,7 +763,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 #else
 
 #if DMA
-      err = clEnqueueReadBuffer(queue[j], buf_results[j], CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
+      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
 
 #else
 
@@ -991,12 +993,14 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                              const int num_test_cases, const int size_chunks,
                              int *padded_input_chunks, int *num_tests_chunks,
                              size_t *size_inputs_chunks,
+                             size_t *size_inputs_chunks_max,
                              size_t *buf_offsets_chunks,
                              const cl_device_id *device) {
   int num_tests = 0;
   int padded_input_length;
   int current_max_test_length = 0;
   size_t size_current_chunk = 0;
+  size_t max_size = 0;
   size_t current_buf_offset = 0;
   int testid_start = 0;
 
@@ -1028,6 +1032,9 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
                               current_buf_offset, size_current_chunk);
         (*num_chunks)++;
         *size_inputs_total += size_current_chunk;
+        if(max_size < size_current_chunk) {
+          max_size = size_current_chunk;
+        }
 
         num_tests = 0;
         size_current_chunk = 0;
@@ -1036,6 +1043,7 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
         testid_start = i + 1;
       }
     }
+
   }
 
   // handle remaining tests
@@ -1059,6 +1067,13 @@ void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
 
     (*num_chunks)++;
     *size_inputs_total += size_current_chunk;
+    if(max_size < size_current_chunk) {
+      max_size = size_current_chunk;
+    }
+  }
+
+  if(size_inputs_chunks_max) {
+    *size_inputs_chunks_max = max_size;
   }
 }
 

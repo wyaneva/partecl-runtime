@@ -72,7 +72,11 @@ void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
                                  int max_input_size, int num_test_cases);
 
+void populate_host_chunks(char *inputs_chunks[], struct partecl_input *inputs_par, 
+    int *padded_input_size_chunks, int *num_tests_chunks, int num_chunks); 
+
 void calculate_chunks_params(int *num_chunks, size_t *size_inputs_total,
+
                              const struct partecl_input *inputs_par,
                              const int num_test_cases, const int size_chunks,
                              int *padded_input_chunks, int *inputs_chunks,
@@ -298,25 +302,9 @@ int main(int argc, char **argv) {
     if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_inputs[%d]: %d\n", j, err);
   }
   
-  // Populate host chunks
-  int testid_start = 0;
-  for (int j = 0; j < num_chunks; j++) {
-
-    int num_tests = num_tests_chunks[j];
-    char *inptptr = inputs_chunks[j];
-
-    for (int i = testid_start; i < testid_start + num_tests; i++) {
-
-      int padded_size = padded_input_size_chunks[j];
-      for (int k = 0; k < padded_size; k++) {
-
-        *inptptr = inputs_par[i].input_ptr[k];
-        inptptr++;
-      }
-    }
-
-    testid_start += num_tests;
-  }
+  // populate host chunks - transposed or not
+  populate_host_chunks(inputs_chunks, inputs_par,
+    padded_input_size_chunks, num_tests_chunks, num_chunks); 
   free(inputs_par);
 
   // Allocate pinned host result buffer and mapped result pointer 
@@ -333,14 +321,6 @@ int main(int argc, char **argv) {
 
 #endif
 
-#if FSM_INPUTS_COAL_CHAR
-
-  for (int j = 0; j < num_chunks; j++) {
-    int max_input_size = padded_input_size_chunks[j];
-    transpose_inputs_char(inputs_chunks[j], max_input_size, num_tests_chunks[j],
-                          input_length);
-  }
-#else
 #if FSM_INPUTS_COAL_CHAR4
   // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
   int padded_size =
@@ -393,7 +373,6 @@ int main(int argc, char **argv) {
          size_inputs_offset);
 
   free(inputs_par);
-#endif
 #endif
 #endif
 
@@ -900,6 +879,32 @@ void calculate_dimensions(cl_device_id *device, size_t gdim[3], size_t ldim[3],
   ldim[0] = ldim0;
   ldim[1] = 1;
   ldim[2] = 1;
+}
+
+void populate_host_chunks(char *inputs_chunks[], struct partecl_input *inputs_par, 
+    int *padded_input_size_chunks, int *num_tests_chunks, int num_chunks) {
+
+  int testid_start = 0;
+  for (int j = 0; j < num_chunks; j++) {
+
+    int num_tests = num_tests_chunks[j];
+    char *inptptr = inputs_chunks[j];
+    int padded_size = padded_input_size_chunks[j];
+
+#if FSM_INPUTS_COAL_CHAR
+    for (int k = 0; k < padded_size; k++) {
+      for (int i = testid_start; i < testid_start + num_tests; i++) {
+#else
+    for (int i = testid_start; i < testid_start + num_tests; i++) {
+      for (int k = 0; k < padded_size; k++) {
+#endif
+        *inptptr = inputs_par[i].input_ptr[k];
+        inptptr++;
+      }
+    }
+
+    testid_start += num_tests;
+  }
 }
 
 void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,

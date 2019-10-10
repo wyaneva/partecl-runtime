@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "../source/cl-utils.h"
-#include "../utils/timing.h"
-#include "../utils/utils.h"
+#include "../../source/cl-utils.h"
+#include "../../utils/timing.h"
+#include "../../utils/utils.h"
 
 #define DMA 1
 #define NUM_INT 1024*10000

@@ -26,5 +26,6 @@ build/manual/*
 cuda/cuda-test
 cuda/kernel.o
 cuda/*.nvprof
-dma-test/main
-dualcopy-test/main
+playgrounds/dma-test/main
+playgrounds/dualcopy-test/main
+playgrounds/transpose-test/main

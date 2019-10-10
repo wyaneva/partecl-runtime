@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "../source/cl-utils.h"
-#include "../utils/timing.h"
-#include "../utils/utils.h"
+#include "../../source/cl-utils.h"
+#include "../../utils/timing.h"
+#include "../../utils/utils.h"
 
 #define NUM_INT 1024*10000
 //#define NUM_INT 10

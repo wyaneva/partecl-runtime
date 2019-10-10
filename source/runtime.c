@@ -146,6 +146,7 @@ int main(int argc, char **argv) {
   cl_device_id device;
   create_context_on_gpu(&ctx, &device, do_choose_device);
 
+
   // execute main code from FSM (TODO: plug main code from source file)
   int num_transitions;
   int starting_state;
@@ -186,9 +187,7 @@ int main(int argc, char **argv) {
   struct partecl_input *inputs_par;
   size_t size_inputs_par = sizeof(struct partecl_input) * num_test_cases;
   inputs_par = (struct partecl_input *)malloc(size_inputs_par);
-  struct partecl_result *results_par;
-  size_t size_results_par = sizeof(struct partecl_result) * num_test_cases;
-  results_par = (struct partecl_result *)malloc(size_results_par);
+  printf("Size for reading the tests: %zu\n", size_inputs_par);
 
   // read the test cases
   struct aggr aggregate = {0, 0.0, 0.0};
@@ -271,14 +270,38 @@ int main(int argc, char **argv) {
                           num_tests_chunks, size_inputs_chunks, &size_inputs_chunks_max,
                           buf_offsets_chunks, &device);
 
-  // allocate & populate inputs and results
-  char *inputs_chunks[num_chunks];
-  char *results_chunks[num_chunks];
+  for (int j = 0; j < num_chunks; j++) {
+    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n", j,
+           num_tests_chunks[j], size_inputs_chunks[j],
+           padded_input_size_chunks[j]);
+  }
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_total);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_total);
 
+  // create queues 
+  cl_command_queue queue[num_chunks];
+  for(int i = 0; i < num_chunks; i++) {
+    create_command_queue(&queue[i], &ctx, &device);
+  }
+
+  // Allocate pinned host input buffer and mapped input pointer 
+  cl_mem pinned_host_inputs[num_chunks];
+  char *inputs_chunks[num_chunks];
+
+  for(int j = 0; j < num_chunks; j++) {
+    pinned_host_inputs[j] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunks[j], NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_inputs[%d]: %d\n", j, err);
+
+    inputs_chunks[j] = clEnqueueMapBuffer(queue[0], pinned_host_inputs[j], CL_TRUE, CL_MAP_WRITE, 0, size_inputs_chunks[j], 0, NULL, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_inputs[%d]: %d\n", j, err);
+  }
+  
+  // Populate host chunks
   int testid_start = 0;
   for (int j = 0; j < num_chunks; j++) {
 
-    inputs_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
     int num_tests = num_tests_chunks[j];
     char *inptptr = inputs_chunks[j];
 
@@ -293,16 +316,21 @@ int main(int argc, char **argv) {
     }
 
     testid_start += num_tests;
-    results_chunks[j] = (char *)malloc(size_inputs_chunks[j]);
   }
-
-  for (int j = 0; j < num_chunks; j++) {
-    printf("chunk: %d\t num tests: %d\t size: %ld\t padded input size: %d\n", j,
-           num_tests_chunks[j], size_inputs_chunks[j],
-           padded_input_size_chunks[j]);
-  }
-
   free(inputs_par);
+
+  // Allocate pinned host result buffer and mapped result pointer 
+  cl_mem pinned_host_results[num_chunks];
+  char *results_chunks[num_chunks];
+
+  for(int j = 0; j < num_chunks; j++) {
+    pinned_host_results[j] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunks[j], NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_results[%d]: %d\n", j, err);
+
+    results_chunks[j] = clEnqueueMapBuffer(queue[0], pinned_host_results[j], CL_TRUE, CL_MAP_READ, 0, size_inputs_chunks[j], 0, NULL, NULL, &err);
+    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_results[%d]: %d\n", j, err);
+  }
+
 #endif
 
 #if FSM_INPUTS_COAL_CHAR
@@ -369,18 +397,11 @@ int main(int argc, char **argv) {
 #endif
 #endif
 
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
-         size_inputs_total);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs_total);
-#endif
-
   struct partecl_result *exp_results;
-  exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
-                                                num_test_cases);
-  if (do_compare_results)
+  if (do_compare_results) {
+    exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *num_test_cases);
     read_expected_results(exp_results, num_test_cases);
+  }
 
   // clalculate dimensions
   size_t goffset[3] = {0, 0, 0};
@@ -392,12 +413,6 @@ int main(int argc, char **argv) {
 #endif
     calculate_dimensions(&device, gdim[j], ldim[j], num_tests, ldim0);
     printf("LDIM = %zd, chunks = %d\n", ldim[j][0], num_chunks);
-  }
-
-  // create queues 
-  cl_command_queue queue[num_chunks];
-  for(int i = 0; i < num_chunks; i++) {
-    create_command_queue(&queue[i], &ctx, &device);
   }
 
   // create kernel
@@ -453,7 +468,7 @@ int main(int argc, char **argv) {
   // Allocate OpenCL device buffers
 #if FSM_INPUTS_WITH_OFFSETS
   cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
+  if   (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
 
   cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_offset, NULL, &err);
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
@@ -491,34 +506,6 @@ int main(int argc, char **argv) {
   cl_mem buf_transitions = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_transitions, NULL, &err);
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_transitions: %d\n", err);
  
-  // Allocate pinned host buffers 
-  cl_mem pinned_host_inputs[num_chunks];
-  cl_mem pinned_host_results[num_chunks];
-
-  for(int j = 0; j < num_chunks; j++) {
-    pinned_host_inputs[j] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunks[j], NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_inputs[%d]: %d\n", j, err);
-
-    pinned_host_results[j] = clCreateBuffer(ctx, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, size_inputs_chunks[j], NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clCreateBuffer pinned_host_results[%d]: %d\n", j, err);
-  }
-  
-  // Get mapped pointers to host buffers
-  char *inputs_dma[num_chunks];
-  char *results_dma[num_chunks];
-  for(int j = 0; j < num_chunks; j++) {
-    inputs_dma[j] = clEnqueueMapBuffer(queue[0], pinned_host_inputs[j], CL_TRUE, CL_MAP_WRITE, 0, size_inputs_chunks[j], 0, NULL, NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_inputs[%d]: %d\n", j, err);
-
-    results_dma[j] = clEnqueueMapBuffer(queue[0], pinned_host_results[j], CL_TRUE, CL_MAP_READ, 0, size_inputs_chunks[j], 0, NULL, NULL, &err);
-    if (err != CL_SUCCESS) printf("error: clEnqueueMapBuffer pinned_host_results[%d]: %d\n", j, err);
-  }
-
-  // Populate inputs
-  for(int j = 0; j < num_chunks; j++) {
-    memcpy(inputs_dma[j], inputs_chunks[j], size_inputs_chunks[j]);
-  }
-
   // Set kernel arguments
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
   // the inputs and results arguments are different for each chunk
@@ -564,15 +551,41 @@ int main(int argc, char **argv) {
                   queue, knl, 
                   goffset, gdim, ldim,
                   buf_inputs, buf_results, size_inputs_chunks, 
-                  inputs_dma, results_dma);
+                  inputs_chunks, results_chunks);
+
+  // Cleanup inputs
+#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+  // Free device memory buffers
+  err = clReleaseMemObject(buf_inputs);
+  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_inputs: %d\n", err);
+
+  for (int j = 0; j < num_chunks; j++) {
+    // unmap pinned memory
+    err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs[j], (void*)inputs_chunks[j], 0, NULL, NULL);
+    if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_inputs[%d]: %d\n", j, err);
+
+    // free host memory buffers for all chunks
+    err = clReleaseMemObject(pinned_host_inputs[j]);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs[%d]: %d\n", j, err);
+  }
+#else
+    err = clReleaseMemObject(buf_inputs);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject: %d\n", err);
+#endif
+
+    err = clReleaseMemObject(buf_transitions);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObject bur_transitions: %d\n", err);
+
+#if FSM_INPUTS_WITH_OFFSETS
+    err = clReleaseMemObject(buf_offsets);
+    if (err != CL_SUCCESS) printf("error: clReleaseMemObjec: %d\n", err);
+#endif
 
   // Reconstruct and check results
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
-   // Copy results into results_chunks
-   for(int j = 0; j < num_chunks; j++) {
-     memcpy(results_chunks[j], results_dma[j], size_inputs_chunks[j]);
-   }
-#endif
+  struct partecl_result *results_par;
+  size_t size_results_par = sizeof(struct partecl_result) * num_test_cases;
+  results_par = (struct partecl_result *)malloc(size_results_par);
+  printf("Size for recording the results: %zu\n", size_results_par);
 
 #if FSM_INPUTS_WITH_OFFSETS
   results_with_offsets_to_partecl_results(results_offset, results_par,
@@ -627,43 +640,29 @@ int main(int argc, char **argv) {
 #endif
 
   // check results
-  if (do_compare_results)
+  if (do_compare_results) {
     compare_results(results_par, exp_results, num_test_cases);
+    free(exp_results);
+  }
+  free(results_par);
 
-  // Cleanup
+  // Cleanup results and the rest
 #if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
   // Free device memory buffers
-  err = clReleaseMemObject(buf_inputs);
-  if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_inputs: %d\n", err);
   err = clReleaseMemObject(buf_results);
   if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_results: %d\n", err);
 
   for (int j = 0; j < num_chunks; j++) {
     // unmap pinned memory
-    err = clEnqueueUnmapMemObject(queue[0], pinned_host_inputs[j], (void*)inputs_dma[j], 0, NULL, NULL);
-    if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_inputs[%d]: %d\n", j, err);
-    err = clEnqueueUnmapMemObject(queue[0], pinned_host_results[j], (void*)results_dma[j], 0, NULL, NULL);
+    err = clEnqueueUnmapMemObject(queue[0], pinned_host_results[j], (void*)results_chunks[j], 0, NULL, NULL);
     if (err != CL_SUCCESS) printf("error: clEnqueueUnmapMemObject pinned_host_results[%d]: %d\n", j, err);
 
     // free host memory buffers for all chunks
-    err = clReleaseMemObject(pinned_host_inputs[j]);
-    if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_inputs[%d]: %d\n", j, err);
     err = clReleaseMemObject(pinned_host_results[j]);
     if (err != CL_SUCCESS) printf("error: clReleaseMemObject pinned_host_results[%d]: %d\n", j, err);
   }
 #else
-    err = clReleaseMemObject(buf_inputs);
-    if (err != CL_SUCCESS) printf("error: clReleaseMemObject: %d\n", err);
-
     err = clReleaseMemObject(buf_results);
-    if (err != CL_SUCCESS) printf("error: clReleaseMemObjec: %d\n", err);
-#endif
-
-    err = clReleaseMemObject(buf_transitions);
-    if (err != CL_SUCCESS) printf("error: clReleaseMemObject bur_transitions: %d\n", err);
-
-#if FSM_INPUTS_WITH_OFFSETS
-    err = clReleaseMemObject(buf_offsets);
     if (err != CL_SUCCESS) printf("error: clReleaseMemObjec: %d\n", err);
 #endif
 
@@ -675,14 +674,6 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS) printf("error: clReleaseCommandQueue %d: %d\n", j, err);
     }
 
-  free(results_par);
-  free(exp_results);
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
-  for (int i = 0; i < num_chunks; i++) {
-    free(inputs_chunks[i]);
-    free(results_chunks[i]);
-  }
-#endif
 #if FSM_INPUTS_COAL_CHAR4
   free(inputs_coal_char4);
   free(results_coal_char4);
@@ -699,7 +690,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
                      size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
                      cl_mem buf_inputs, cl_mem buf_results, 
                      size_t size_inputs_chunks[], 
-                     char* inputs_dma[], char* results_dma[]) {
+                     char* inputs_chunks[], char* results_chunks[]) {
 
   cl_int err;
   // declare events
@@ -731,7 +722,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 #else
 #if DMA
 
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_dma[j], 0, NULL, &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 #else
 
@@ -763,7 +754,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 #else
 
 #if DMA
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_chunks[j], (void*)results_dma[j], 1, &event_kernel[j], &event_results[j]);
+      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_chunks[j], (void*)results_chunks[j], 1, &event_kernel[j], &event_results[j]);
 
 #else
 

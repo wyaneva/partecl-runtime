@@ -10,6 +10,11 @@ build/*.kiss2
 build/*.py
 build/run-fsm.sh
 build/run-fsm-master.sh
+build/run3.sh
+build/run10.sh
+build/run-gpu-test.sh
+build/run-cpu-test.sh
+build/kill.sh
 
 #objects & executables
 build/gpu-test
@@ -17,8 +22,9 @@ build/cpu-test
 build/gpu-test-debug
 build/cpu-test-debug
 build/experiments/*
+build/manual/*
 cuda/cuda-test
 cuda/kernel.o
 cuda/*.nvprof
 dma-test/main
-dualcopy/main
+dualcopy-test/main

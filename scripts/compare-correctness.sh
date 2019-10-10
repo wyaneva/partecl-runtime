@@ -32,8 +32,10 @@ sed -i '/TC /!d' cpu.correctness
 diff gpu.correctness cpu.correctness > diff.result
 if [ -s diff.result ] 
 then
+  echo "Incorrect!"
   echo -1
 else
+  echo "Correct!"
   echo 1
   rm gpu.correctness
   rm cpu.correctness

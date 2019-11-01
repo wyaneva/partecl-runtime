@@ -1,4 +1,4 @@
-EXECUTABLES = gpu-test cpu-test gpu-test-debug
+EXECUTABLES = gpu-test cpu-test gpu-test-debug cpu-test-debug
 
 GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(HOME)/partecl-runtime/kernel-gen/ -I $(HOME)/partecl-runtime/source -I $(HOME)/clClibc/ -DGPU_COMPILED=1\"" \
 	    -DDO_TEST_DIST=1 \
@@ -40,6 +40,14 @@ gpu-test-debug: ../source/runtime.c \
 	  ../kernel-gen/cpu-gen.c 
 	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) -lm -g
 
+cpu-test-debug: ../run-on-cpu/run-on-cpu.c \
+	  ../utils/options.c \
+	  ../utils/read-test-cases.c \
+	  ../utils/utils.c \
+	  ../utils/fsm-utils.c \
+	  ../kernel-gen/cpu-gen.c \
+	  ../cpu-gen/test-cl.c
+	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(CPU_FLAGS) -fopenmp -Wno-implicit-function-declaration -lm -g
 
 clean:
 	rm -f $(EXECUTABLES) *.o

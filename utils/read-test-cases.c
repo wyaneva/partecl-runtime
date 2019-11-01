@@ -85,6 +85,30 @@ int parseStdin(char **arg, char **bptr) {
   return SUCCESS;
 }
 
+int read_test_cases_chunk(int test_id_start, int *test_id_end, size_t chunk_size) {
+  // TODO:
+  
+  size_t current_chunk_size = 0;
+  int padded_test_lenght = 0;
+  int test_length;
+  int test_index;
+  int line_index;
+
+  // calculate size of current chunk and exit if reached
+  if (chunk_size > 0) {
+    padded_test_lenght =
+        padded_test_lenght >= test_length ? padded_test_lenght : test_length;
+    size_t current_chunk_size = sizeof(char) * test_index * padded_test_lenght;
+    if (current_chunk_size >= chunk_size) {
+      // we have reached our chunksize, so stop reading
+      *test_id_end = line_index + 1;
+      //break;
+    }
+  }
+
+  return SUCCESS;
+}
+
 int read_test_cases(struct partecl_input *inputs, int num_test_cases,
                     struct aggr *aggregate) {
   int test_index = 0;
@@ -104,17 +128,6 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
   }
   fclose(file);
 
-  /* TODO:
-  // we are using the step to read a distribution of the tests in the file, when we only want a few of them
-  int step = 1;
-  if (num_test_cases < total_num_tests) {
-    step = total_num_tests / num_test_cases;
-    if(total_num_tests % num_test_cases != 0) {
-      step++;
-    }
-  }
-  */
-
   // open the file again to read them
   file = fopen(TC_FILENAME, "r");
   while (test_index < num_test_cases) {
@@ -126,15 +139,9 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
     }
 
     line_index++;
-    if(!is_test_chosen(total_num_tests, num_test_cases))
-    {
+    if (!is_test_chosen(total_num_tests, num_test_cases)) {
       continue;
     }
-    /* TODO
-    if(line_index % step != 0) {
-      continue;
-    }
-    */
 
     char **args = (char **)malloc(sizeof(char *));
     int argc = 0;
@@ -168,8 +175,11 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
     }
 
     populate_inputs(&inputs[test_index], argc, args, stdinc, stdins);
-    int length = calculate_test_length(args[argc-1]);
-    update_aggr(aggregate, length);
+    int test_length = calculate_test_length(args[argc-1]);
+    update_aggr(aggregate, test_length);
+
+    // TODO
+    printf("%s\n", args[argc-1]);
 
     // free pointers
     for (int i = 0; i < argc; i++)
@@ -180,6 +190,7 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
       free(stdins[0]);
     free(stdins);
     test_index++;
+
   }
   fclose(file);
 

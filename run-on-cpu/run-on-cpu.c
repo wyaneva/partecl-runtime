@@ -61,10 +61,11 @@ int main(int argc, char **argv) {
   int do_time = DO_TIME;
   int num_test_cases = 1;
   int do_sort_test_cases = DO_SORT_TEST_CASES;
+  int size_chunks = SIZE_CHUNKS;
   char *filename = NULL;
 
   if (read_options(argc, argv, &num_test_cases, &do_print_results, &do_time,
-                   &num_runs, NULL, NULL, NULL, NULL, &do_sort_test_cases,
+                   &num_runs, NULL, NULL, &size_chunks, NULL, &do_sort_test_cases,
                    &filename) == FAIL)
     return 0;
   printf("Device: CPU.\n");
@@ -75,6 +76,14 @@ int main(int argc, char **argv) {
     if (tid == 0)
       printf("Number of threads = %d\n", omp_get_num_threads());
   }
+
+  // chunk parameters
+  size_chunks *= KB_TO_B; // turn into bytes
+  int num_tests_chunk = 0;
+  size_t size_inputs_chunk = 0;
+  int padded_input_size_chunk = 0;
+
+
 
   struct partecl_input *inputs;
   size_t inputs_size = sizeof(struct partecl_input) * num_test_cases;

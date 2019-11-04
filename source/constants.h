@@ -6,7 +6,7 @@
  **********************************/
 
 /*
- * BMRK toggles special code for C programs */
+ * BMRK toggles special code for testing C programs */
 
 #ifndef BMRK_C
 #define BMRK_C 0

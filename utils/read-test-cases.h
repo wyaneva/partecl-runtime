@@ -21,5 +21,9 @@
 #include "utils.h"
 
 int read_test_cases(struct partecl_input *, int, struct aggr *);
-
+int read_test_cases_chunk(char *inputs[], int num_test_cases,
+                          int *test_index_total, size_t chunk_size,
+                          int test_id_start, struct aggr *aggregate,
+                          int *test_id_end);
+ 
 #endif

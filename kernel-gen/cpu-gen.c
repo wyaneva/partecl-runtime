@@ -36,3 +36,18 @@ void compare_results(struct partecl_result* results, struct partecl_result* exp_
     printf("\n");
   }
 }
+
+void compare_results_char(char* results[], char* exp_results[], int num_test_cases)
+{
+  for(int i = 0; i < num_test_cases; i++)
+  {
+    char* outputptr = results[i];
+    printf("TC %d: ", i+1);
+    while(*outputptr != '\0')
+    {
+      printf("%c ", *outputptr);
+      outputptr++;
+    }
+    printf("\n");
+  }
+}

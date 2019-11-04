@@ -30,21 +30,21 @@ short lookup_symbol(transition *transitions, short current_state, char input[],
  * Returns the final state.
  */
 
-#if FSM_INPUTS_WITH_OFFSETS
-void run_main(char *input, char *result, transition *transitions,
-              short starting_state, int input_length, int output_length) {
-#else
+#if BMRK_C
 void run_main(struct partecl_input input, struct partecl_result *result,
               transition *transitions, short starting_state, int input_length,
               int output_length) {
+#else
+void run_main(char *input, char *result, transition *transitions,
+              short starting_state, int input_length, int output_length) {
 #endif
 
-#if FSM_INPUTS_WITH_OFFSETS
-  char *input_ptr = &input[0];
-  char *output_ptr = &result[0];
-#else
+#if BMRK_C
   char *input_ptr = input.input_ptr;
   char *output_ptr = result->output;
+#else
+  char *input_ptr = input;
+  char *output_ptr = result;
 #endif
 
   // output

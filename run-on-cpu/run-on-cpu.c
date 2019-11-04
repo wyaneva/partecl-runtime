@@ -28,17 +28,7 @@
 #include "../utils/fsm-utils.h"
 #include "../source/constants.h"
 
-#if FSM_INPUTS_WITH_OFFSETS
-int run_main(char *input, char *result, transition *transitions,
-             short starting_state, int input_length, int output_length);
-
-void run_on_cpu(char *input, char *result, transition *transitions,
-                short starting_state, int input_length, int output_length) {
-
-  run_main(input, result, transitions, starting_state, input_length,
-           output_length);
-}
-#else
+#if BMRK_C
 int run_main(struct partecl_input input, struct partecl_result *result,
              transition *transitions, short starting_state, int input_length,
              int output_length);
@@ -46,6 +36,16 @@ int run_main(struct partecl_input input, struct partecl_result *result,
 void run_on_cpu(struct partecl_input input, struct partecl_result *result,
                 transition *transitions, short starting_state, int input_length,
                 int output_length) {
+
+  run_main(input, result, transitions, starting_state, input_length,
+           output_length);
+}
+#else 
+int run_main(char *input, char *result, transition *transitions,
+             short starting_state, int input_length, int output_length);
+
+void run_on_cpu(char *input, char *result, transition *transitions,
+                short starting_state, int input_length, int output_length) {
 
   run_main(input, result, transitions, starting_state, input_length,
            output_length);
@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
   size_t size_inputs_chunk = 0;
   int padded_input_size_chunk = 0;
 
-
-
+  struct aggr aggregate = {0, 0.0, 0.0};
+#if BMRK_C || FSM_INPUTS_WITH_OFFSETS //testing C programs or fsm with offsets
   struct partecl_input *inputs;
   size_t inputs_size = sizeof(struct partecl_input) * num_test_cases;
   inputs = (struct partecl_input *)malloc(inputs_size);
@@ -93,11 +93,25 @@ int main(int argc, char **argv) {
   results = (struct partecl_result *)malloc(results_size);
 
   // read the test cases
-  struct aggr aggregate = {0, 0.0, 0.0};
   if (read_test_cases(inputs, num_test_cases, &aggregate) == FAIL) {
     printf("Failed reading the test cases.\n");
     return -1;
   }
+#else //testing FSMs
+
+  char *inputs[num_test_cases];
+  char *results[num_test_cases];
+
+  // read test cases
+  int test_index_total = 0;
+  int test_id_start = 0;
+  int test_id_end;
+  read_test_cases_chunk(inputs, num_test_cases, &test_index_total, size_chunks, test_id_start, &aggregate, &test_id_end);
+
+  for(int i=0; i<num_test_cases; i++) {
+    results[i] = (char *)malloc(strlen(inputs[i])*sizeof(char*));
+  }
+#endif
 
 #if DO_TEST_DIST
   // write the aggregate in the test analysis file
@@ -180,7 +194,19 @@ int main(int argc, char **argv) {
     struct timespec time1, time2;
     get_timestamp(&time1);
 
-#if FSM_INPUTS_WITH_OFFSETS
+#if BMRK_C //testing C programs
+
+#pragma omp parallel for default(none)                                         \
+    shared(num_test_cases, inputs, results, transitions, starting_state,       \
+           input_length, output_length) schedule(guided)
+    for (int j = 0; j < num_test_cases; j++) {
+      run_on_cpu(inputs[j], &results[j], transitions, starting_state,
+                 input_length, output_length);
+    }
+#else
+
+#if FSM_INPUTS_WITH_OFFSETS //testing FSMs with offsets
+
 #pragma omp parallel for default(none)                                         \
     shared(num_test_cases, inputs_offset, results_offset, offsets, transitions, starting_state,       \
            input_length, output_length) schedule(guided)
@@ -190,13 +216,18 @@ int main(int argc, char **argv) {
                  input_length, output_length);
     }
 #else
+
+    // testing FSMs without offsets
 #pragma omp parallel for default(none)                                         \
     shared(num_test_cases, inputs, results, transitions, starting_state,       \
            input_length, output_length) schedule(guided)
     for (int j = 0; j < num_test_cases; j++) {
-      run_on_cpu(inputs[j], &results[j], transitions, starting_state,
+
+      run_on_cpu(inputs[j], results[j], transitions, starting_state,
                  input_length, output_length);
     }
+
+#endif
 #endif
 
     get_timestamp(&time2);
@@ -212,9 +243,20 @@ int main(int argc, char **argv) {
       results_offset, results, total_number_of_inputs, offsets, num_test_cases);
 #endif
 
+#if BMRK_C || FSM_INPUTS_WITH_OFFSETS
   if (do_print_results)
     compare_results(results, NULL, num_test_cases);
 
   free(inputs);
   free(results);
+#else
+  if (do_print_results)
+    compare_results_char(results, NULL, num_test_cases);
+
+  for(int i=0; i < num_test_cases; i++) {
+    free(inputs[i]);
+    free(results[i]);
+  }
+#endif
+
 }

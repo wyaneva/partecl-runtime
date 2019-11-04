@@ -85,26 +85,116 @@ int parseStdin(char **arg, char **bptr) {
   return SUCCESS;
 }
 
-int read_test_cases_chunk(int test_id_start, int *test_id_end, size_t chunk_size) {
-  // TODO:
-  
+// read a single chunk of size
+// IN: `inputs` - populate with read tests
+//     `num_test_cases` - total number of tests to read
+//     `chunk_size` - size of chunk in Bytes
+//     `test_id_start` - where the chunk starts
+// OUT: `aggregate` - average length of total tests read
+//      `test_id_end` - where the chunk ends
+// both: `test_index_total` - how many tests have we read so far in total
+int read_test_cases_chunk(char *inputs[], int num_test_cases,
+                          int *test_index_total, size_t chunk_size,
+                          int test_id_start, struct aggr *aggregate,
+                          int *test_id_end) {
+  int test_index_chunk=0;
+  int line_index = -1;
+  char line[100000];
+
+  FILE *file = fopen(TC_FILENAME, "r");
+  if (file == NULL) {
+    printf("Could not find test file %s.\n", TC_FILENAME);
+    return FAIL;
+  }
+
+  //find out how many tests there are in the file
+  int total_num_tests = 0;
+  while (fgets(line, sizeof(line), file) != NULL) {
+    total_num_tests++;
+  }
+  fclose(file);
+
+  // open the file again to read them
   size_t current_chunk_size = 0;
   int padded_test_lenght = 0;
-  int test_length;
-  int test_index;
-  int line_index;
-
-  // calculate size of current chunk and exit if reached
-  if (chunk_size > 0) {
-    padded_test_lenght =
-        padded_test_lenght >= test_length ? padded_test_lenght : test_length;
-    size_t current_chunk_size = sizeof(char) * test_index * padded_test_lenght;
-    if (current_chunk_size >= chunk_size) {
-      // we have reached our chunksize, so stop reading
-      *test_id_end = line_index + 1;
-      //break;
+  file = fopen(TC_FILENAME, "r");
+  while (*test_index_total < num_test_cases) {
+    if (fgets(line, sizeof(line), file) == NULL) {
+      // reopen the file to read the test cases again
+      fclose(file);
+      file = fopen(TC_FILENAME, "r");
+      fgets(line, sizeof(line), file);
     }
+
+    line_index++;
+    if (!is_test_chosen(total_num_tests, num_test_cases)) {
+      continue;
+    }
+
+    char **args = (char **)malloc(sizeof(char *));
+    int argc = 0;
+    char **stdins = (char **)malloc(sizeof(char *));
+    int stdinc = 0;
+    char *bptr = &line[0];
+    while (*bptr != '\n') {
+      char *argparse;
+      int parse = parseArg(&argparse, &bptr);
+
+      if (parse == PARSED_ARGV) // command-line arg
+      {
+        argc++;
+        args = (char **)realloc(args, sizeof(char *) * (argc));
+        if (args == NULL) {
+          printf("realloc args: Failed reallocating memory!\n");
+          return FAIL;
+        }
+        args[argc - 1] = argparse;
+      } else if (parse == PARSED_STDIN) // stdin
+      {
+        // we only support one var for stdin for now
+        stdinc++;
+        stdins = (char **)realloc(stdins, sizeof(char *) * stdinc);
+        if (stdins == NULL) {
+          printf("realloc stdins: Failed reallocating memory!\n");
+          return FAIL;
+        }
+        stdins[stdinc - 1] = argparse;
+      }
+    }
+
+    int test_length = calculate_test_length(args[argc-1]);
+    inputs[test_index_chunk] = (char *)malloc(test_length * sizeof(char*));
+    strcpy(inputs[test_index_chunk], args[argc-1]);
+    update_aggr(aggregate, test_length);
+
+    // TODO
+    //printf("%s\n", args[argc-1]);
+
+    // calculate size of current chunk and exit if reached
+    if (chunk_size > 0) {
+      padded_test_lenght =
+          padded_test_lenght >= test_length ? padded_test_lenght : test_length;
+      size_t current_chunk_size =
+          sizeof(char) * test_index_chunk * padded_test_lenght;
+      if (current_chunk_size >= chunk_size) {
+        // we have reached our chunksize, so stop reading
+        *test_id_end = line_index + 1;
+        break;
+      }
+    }
+
+    // free pointers
+    for (int i = 0; i < argc; i++)
+      free(args[i]);
+    free(args);
+
+    if (stdinc > 0)
+      free(stdins[0]);
+    free(stdins);
+    (*test_index_total)++;
+    test_index_chunk++;
   }
+  fclose(file);
 
   return SUCCESS;
 }

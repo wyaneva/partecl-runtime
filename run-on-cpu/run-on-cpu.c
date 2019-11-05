@@ -68,9 +68,10 @@ int main(int argc, char **argv) {
                    &num_runs, NULL, NULL, &size_chunks, NULL, &do_sort_test_cases,
                    &filename) == FAIL)
     return 0;
+
   printf("Device: CPU.\n");
   printf("Number of test cases %d.\n", num_test_cases);
-#pragma omp parallel default(none)
+#pragma omp parallel default(none) shared(num_test_cases)
   {
     int tid = omp_get_thread_num();
     if (tid == 0)
@@ -124,6 +125,7 @@ int main(int argc, char **argv) {
   char *fsmname = (char*)malloc(sizeof(char)*15);
   char *token;
 
+  char *fsmfilename_start = fsmfilename;
   strcpy(fsmfilename, filename);
   while((token = strsep(&fsmfilename, "//")) != NULL) {
     strcpy(fsmname, token);
@@ -133,15 +135,13 @@ int main(int argc, char **argv) {
   FILE *analysis_f = fopen(TEST_DIST_FILE, "a");
   if (analysis_f == NULL) {
     printf("Error opening file %s!\n", TEST_DIST_FILE);
-    free(fsmfilename);
-    free(fsmname);
     return 0;
   }
 
   fprintf(analysis_f, "%s,%d,%f,%f\n", fsmname, num_test_cases, mean, sd);
   fclose(analysis_f);
 
-  free(fsmfilename);
+  free(fsmfilename_start);
   free(fsmname);
 #endif
 

@@ -161,11 +161,13 @@ int main(int argc, char **argv) {
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
-  transition *transitions =
+  transition *transitions = (transition *)malloc(
+      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE);
+  int err_fsm =
       read_fsm(filename, &num_transitions, &starting_state, &input_length,
-               &output_length);
+               &output_length, transitions);
 
-  if (transitions == NULL) {
+  if (err_fsm == FAIL) {
     printf("Reading the FSM failed.");
     return -1;
   }
@@ -662,6 +664,7 @@ int main(int argc, char **argv) {
   free(results_offset);
   free(offsets);
 #endif
+  free(transitions);
 }
 
 void runGpuExecution(int num_runs, int num_chunks, int do_time, 

@@ -133,6 +133,8 @@ int main(int argc, char **argv) {
   FILE *analysis_f = fopen(TEST_DIST_FILE, "a");
   if (analysis_f == NULL) {
     printf("Error opening file %s!\n", TEST_DIST_FILE);
+    free(fsmfilename);
+    free(fsmname);
     return 0;
   }
 
@@ -163,10 +165,12 @@ int main(int argc, char **argv) {
     return 0;
   }
   printf("Reading fsm: %s\n", filename);
-  transition *transitions =
-      read_fsm(filename, &num_transitions, &starting_state, &input_length, &output_length);
+  transition *transitions = (transition *)malloc(
+      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE);
+  int err = read_fsm(filename, &num_transitions, &starting_state, &input_length,
+                     &output_length, transitions);
 
-  if (transitions == NULL) {
+  if (err == FAIL) {
     printf("Reading the FSM failed.");
     return -1;
   }
@@ -258,5 +262,7 @@ int main(int argc, char **argv) {
     free(results[i]);
   }
 #endif
+
+  free(transitions);
 
 }

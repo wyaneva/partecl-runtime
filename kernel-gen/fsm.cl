@@ -185,8 +185,8 @@ int read_parameter(const char *filename, enum fsm_parameter param_type) {
 /**
  * Read an FSM from a KISS2 file
  */
-transition *read_fsm(const char *filename, int *num_transitions, int *starting_state,
-                     int *input_length, int *output_length) {
+int read_fsm(const char *filename, int *num_transitions, int *starting_state,
+             int *input_length, int *output_length, transition *transitions) {
 
   // read the parameters
   // number of states
@@ -194,28 +194,28 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
   if (*num_transitions == -1) {
     /*printf("File %s does not specify a number of transitions. Exiting. \n",
            filename);*/
-    return NULL;
+    return FAIL;
   }
 
   // input length
   *input_length = read_parameter(filename, INPUT_LENGTH);
   if (*input_length == -1) {
     /*printf("File %s does not specify input length. Exiting. \n", filename);*/
-    return NULL;
+    return FAIL;
   }
 
   // output length
   *output_length = read_parameter(filename, OUTPUT_LENGTH);
   if (*output_length == -1) {
     /*printf("File %s does not specify output length. Exiting. \n", filename);*/
-    return NULL;
+    return FAIL;
   }
 
   // state base
   int state_base = read_parameter(filename, STATE_BASE);
   if (state_base == -1) {
     /*printf("File %s does not specify the state base. Exiting. \n", filename);*/
-    return NULL;
+    return FAIL;
   }
 
   // open the file
@@ -223,13 +223,10 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
   FILE *file = fopen(filename, "r");
   if (file == NULL) {
     /*printf("Could not find FSM file %s.\n", filename);*/
-    return NULL;
+    return FAIL;
   }
 
   // read transitions line for line
-  transition *transitions = (transition *)malloc(
-      sizeof(transition) * NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE);
-
   for(int i = 0; i < NUM_STATES * MAX_NUM_TRANSITIONS_PER_STATE; i++) {
     transitions[i].next_state = -1;
     transitions[i].output[0] = '\0';
@@ -278,7 +275,7 @@ transition *read_fsm(const char *filename, int *num_transitions, int *starting_s
     }
   }
 
-  return transitions;
+  return SUCCESS;
 }
 
 int char_to_int(const char c) { return (unsigned char)c; }

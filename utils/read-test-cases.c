@@ -127,6 +127,9 @@ int read_test_cases_chunk(char *inputs[], int num_test_cases,
     }
 
     line_index++;
+    if(test_id_start > line_index) {
+      continue;
+    }
     if (!is_test_chosen(total_num_tests, num_test_cases)) {
       continue;
     }
@@ -163,12 +166,20 @@ int read_test_cases_chunk(char *inputs[], int num_test_cases,
     }
 
     int test_length = calculate_test_length(args[argc-1]);
-    inputs[test_index_chunk] = (char *)malloc(test_length * sizeof(char*));
-    strcpy(inputs[test_index_chunk], args[argc-1]);
+    inputs[*test_index_total] = (char *)malloc(test_length * sizeof(char*));
+    strcpy(inputs[*test_index_total], args[argc-1]);
     update_aggr(aggregate, test_length);
 
-    // TODO
-    //printf("%s\n", args[argc-1]);
+    // free pointers
+    for (int i = 0; i < argc; i++)
+      free(args[i]);
+    free(args);
+
+    if (stdinc > 0)
+      free(stdins[0]);
+    free(stdins);
+    (*test_index_total)++;
+    test_index_chunk++;
 
     // calculate size of current chunk and exit if reached
     if (chunk_size > 0) {
@@ -182,17 +193,6 @@ int read_test_cases_chunk(char *inputs[], int num_test_cases,
         break;
       }
     }
-
-    // free pointers
-    for (int i = 0; i < argc; i++)
-      free(args[i]);
-    free(args);
-
-    if (stdinc > 0)
-      free(stdins[0]);
-    free(stdins);
-    (*test_index_total)++;
-    test_index_chunk++;
   }
   fclose(file);
 
@@ -267,9 +267,6 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
     populate_inputs(&inputs[test_index], argc, args, stdinc, stdins);
     int test_length = calculate_test_length(args[argc-1]);
     update_aggr(aggregate, test_length);
-
-    // TODO
-    printf("%s\n", args[argc-1]);
 
     // free pointers
     for (int i = 0; i < argc; i++)

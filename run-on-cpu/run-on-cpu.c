@@ -98,20 +98,22 @@ int main(int argc, char **argv) {
     printf("Failed reading the test cases.\n");
     return -1;
   }
-#else //testing FSMs
+#endif
 
-  char *inputs[num_test_cases];
-  char *results[num_test_cases];
+#if FSM_INPUTS_WITH_OFFSETS
+  // calculate sizes
+  int total_number_of_inputs;
+  size_t size_inputs_offset;
+  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset, inputs, num_test_cases);
 
-  // read test cases
-  int test_index_total = 0;
-  int test_id_start = 0;
-  int test_id_end;
-  read_test_cases_chunk(inputs, num_test_cases, &test_index_total, size_chunks, test_id_start, &aggregate, &test_id_end);
+  // allocate memory
+  char *inputs_offset = (char *)malloc(size_inputs_offset);
+  char *results_offset = (char *)malloc(size_inputs_offset);
+  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
 
-  for(int i=0; i<num_test_cases; i++) {
-    results[i] = (char *)malloc(strlen(inputs[i])*sizeof(char*));
-  }
+  // copy data
+  partecl_input_to_input_with_offsets(inputs, inputs_offset, offsets,
+                                      num_test_cases);
 #endif
 
 #if DO_TEST_DIST
@@ -155,7 +157,7 @@ int main(int argc, char **argv) {
   }
   */
 
-  // execute the main code - TODO: plug it automatically
+  // read the fsm 
   int num_transitions;
   int starting_state;
   int input_length;
@@ -175,51 +177,43 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-#if FSM_INPUTS_WITH_OFFSETS
-  // calculate sizes
-  int total_number_of_inputs;
-  size_t size_inputs_offset;
-  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset, inputs, num_test_cases);
-
-  // allocate memory
-  char *inputs_offset = (char *)malloc(size_inputs_offset);
-  char *results_offset = (char *)malloc(size_inputs_offset);
-  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
-
-  // copy data
-  partecl_input_to_input_with_offsets(inputs, inputs_offset, offsets,
-                                      num_test_cases);
-#endif
-
   if (do_time)
     printf("Time in ms\n");
 
   for (int i = 0; i < num_runs; i++) {
+
+    double time_to_remove = 0;
     struct timespec time1, time2;
     get_timestamp(&time1);
 
-#if BMRK_C //testing C programs
+#if !BMRK_C && !FSM_INPUTS_WITH_OFFSETS // testing FSMs
 
-#pragma omp parallel for default(none)                                         \
-    shared(num_test_cases, inputs, results, transitions, starting_state,       \
-           input_length, output_length) schedule(guided)
-    for (int j = 0; j < num_test_cases; j++) {
-      run_on_cpu(inputs[j], &results[j], transitions, starting_state,
-                 input_length, output_length);
+    struct timespec time1r, time2r;
+    int test_index_total = 0;
+    int test_index_total_prev;
+    int test_id_start = 0;
+    int test_id_end;
+
+    char *inputs[num_test_cases];
+    char *results[num_test_cases];
+    while (test_index_total < num_test_cases) {
+
+      get_timestamp(&time1r);
+
+      // read test cases
+      test_index_total_prev = test_index_total;
+      read_test_cases_chunk(inputs, num_test_cases, &test_index_total,
+                            size_chunks, test_id_start, &aggregate,
+                            &test_id_end);
+
+      for (int i = test_index_total_prev; i < test_index_total; i++) {
+        results[i] = (char *)malloc(strlen(inputs[i]) * sizeof(char *));
+      }
+      test_id_start = test_id_end;
+
+      get_timestamp(&time2r);
+      time_to_remove += timestamp_diff_in_seconds(time1r, time2r) * 1000;
     }
-#else
-
-#if FSM_INPUTS_WITH_OFFSETS //testing FSMs with offsets
-
-#pragma omp parallel for default(none)                                         \
-    shared(num_test_cases, inputs_offset, results_offset, offsets, transitions, starting_state,       \
-           input_length, output_length) schedule(guided)
-    for (int j = 0; j < num_test_cases; j++) {
-      int offset = offsets[j];
-      run_on_cpu(&inputs_offset[offset], &results_offset[offset], transitions, starting_state,
-                 input_length, output_length);
-    }
-#else
 
     // testing FSMs without offsets
 #pragma omp parallel for default(none)                                         \
@@ -232,37 +226,58 @@ int main(int argc, char **argv) {
     }
 
 #endif
+
+#if BMRK_C //testing C programs
+
+#pragma omp parallel for default(none)                                         \
+    shared(num_test_cases, inputs, results, transitions, starting_state,       \
+           input_length, output_length) schedule(guided)
+    for (int j = 0; j < num_test_cases; j++) {
+      run_on_cpu(inputs[j], &results[j], transitions, starting_state,
+                 input_length, output_length);
+    }
+#else
+#if FSM_INPUTS_WITH_OFFSETS //testing FSMs with offsets
+
+#pragma omp parallel for default(none)                                         \
+    shared(num_test_cases, inputs_offset, results_offset, offsets, transitions, starting_state,       \
+           input_length, output_length) schedule(guided)
+    for (int j = 0; j < num_test_cases; j++) {
+      int offset = offsets[j];
+      run_on_cpu(&inputs_offset[offset], &results_offset[offset], transitions, starting_state,
+                 input_length, output_length);
+    }
+#endif
 #endif
 
     get_timestamp(&time2);
     double time_in_secs = timestamp_diff_in_seconds(time1, time2);
-    double time_cpu = time_in_secs * 1000;
+    double time_cpu = time_in_secs * 1000 - time_to_remove;
 
     if (do_time)
       printf("%.6f \n", time_cpu);
-  }
-
 #if FSM_INPUTS_WITH_OFFSETS
-  results_with_offsets_to_partecl_results(
-      results_offset, results, total_number_of_inputs, offsets, num_test_cases);
+    results_with_offsets_to_partecl_results(results_offset, results,
+                                            total_number_of_inputs, offsets,
+                                            num_test_cases);
 #endif
 
 #if BMRK_C || FSM_INPUTS_WITH_OFFSETS
-  if (do_print_results)
-    compare_results(results, NULL, num_test_cases);
+    if (do_print_results)
+      compare_results(results, NULL, num_test_cases);
 
-  free(inputs);
-  free(results);
+    free(inputs);
+    free(results);
 #else
-  if (do_print_results)
-    compare_results_char(results, NULL, num_test_cases);
+    if (do_print_results)
+      compare_results_char(results, NULL, num_test_cases);
 
-  for(int i=0; i < num_test_cases; i++) {
-    free(inputs[i]);
-    free(results[i]);
-  }
+    for (int i = 0; i < num_test_cases; i++) {
+      free(inputs[i]);
+      free(results[i]);
+    }
 #endif
+  }
 
   free(transitions);
-
 }

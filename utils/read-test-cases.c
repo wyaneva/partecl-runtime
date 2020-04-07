@@ -104,17 +104,6 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
   }
   fclose(file);
 
-  /* TODO:
-  // we are using the step to read a distribution of the tests in the file, when we only want a few of them
-  int step = 1;
-  if (num_test_cases < total_num_tests) {
-    step = total_num_tests / num_test_cases;
-    if(total_num_tests % num_test_cases != 0) {
-      step++;
-    }
-  }
-  */
-
   // open the file again to read them
   file = fopen(TC_FILENAME, "r");
   while (test_index < num_test_cases) {
@@ -130,11 +119,6 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases,
     {
       continue;
     }
-    /* TODO
-    if(line_index % step != 0) {
-      continue;
-    }
-    */
 
     char **args = (char **)malloc(sizeof(char *));
     int argc = 0;

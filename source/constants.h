@@ -23,31 +23,20 @@
 
 //  FSM_INPUTS toggles transposing data for memory coalescing
 //  1. FSM_INPUTS_COAL_CHAR
-//  2. FSM_INPUTS_COAL_CHAR4
 //  They can ONLY be on when FSM_INPUTS_WITH_OFFSETS is NOT on
 
 #ifndef FSM_INPUTS_COAL_CHAR
 #define FSM_INPUTS_COAL_CHAR 1
 #endif
 
-#ifndef FSM_INPUTS_COAL_CHAR4
-#define FSM_INPUTS_COAL_CHAR4 0
-#endif
-
-#if FSM_INPUTS_WITH_OFFSETS || FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
+#if FSM_INPUTS_WITH_OFFSETS || FSM_INPUTS_COAL_CHAR
 #define TEST_INPUTS_ATTR global
 #else
 #define TEST_INPUTS_ATTR
 #endif
 
-#if FSM_INPUTS_COAL_CHAR4
-#define CHAR_N 4
-#define TEST_INPUTS_TYPE char4
-#define TEST_OUTPUTS_ATTR
-#else
 #define TEST_INPUTS_TYPE char
 #define TEST_OUTPUTS_ATTR global
-#endif
 
 /*
  * Sorting toggles

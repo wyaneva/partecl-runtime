@@ -12,7 +12,6 @@ This document relates to using ParTeCL-Runtime to execute FSM tests.
      * For test layout:
        * `FSM_INPUTS_WITH_OFFSETS` - with-offsets
        * `FSM_INPUTS_COAL_CHAR` - padded-transposed
-       * `FSM_INPUTS_COAL_CHAR4` - padded-transposed-char4
        * when all three are set to 0 - padded
 
      * For FSM storage:

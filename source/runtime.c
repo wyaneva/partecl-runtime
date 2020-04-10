@@ -250,8 +250,8 @@ int main(int argc, char **argv) {
   size_chunks *= KB_TO_B; // turn into bytes
   size_t size_inputs_total = 0;
 
-#if FSM_INPUTS_WITH_OFFSETS || FSM_INPUTS_COAL_CHAR4
-  // do not chunk for with-offsets and padded-transposed-char4
+#if FSM_INPUTS_WITH_OFFSETS
+  // do not chunk for with-offsets
   num_chunks = 1;
 #else
 
@@ -323,36 +323,6 @@ int main(int argc, char **argv) {
 
 #endif
 
-#if FSM_INPUTS_COAL_CHAR4
-  // TODO: NOTE WE ARE NOT TAKING INPUT LENGTH INTO ACCOUNT HERE
-  int padded_size =
-      PADDED_INPUT_ARRAY_SIZE + CHAR_N - PADDED_INPUT_ARRAY_SIZE % CHAR_N;
-  size_t size_inputs_coal_char4 =
-      sizeof(cl_char4) * padded_size * num_test_cases / CHAR_N;
-  cl_char4 *inputs_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
-  int max_num_inputs =
-      PADDED_INPUT_ARRAY_SIZE /
-      input_length; // this is the maximum number of inputs per test case
-  for (int i = 0; i < max_num_inputs;
-       i += CHAR_N) { // which input inside the test case
-    for (int j = 0; j < num_test_cases; j++) { // which test case
-      struct partecl_input current_input = inputs_par[j];
-
-      size_t idx = (i / CHAR_N) * num_test_cases + j;
-      for (int k = 0; k < CHAR_N; k++) {
-        char current_symbol = current_input.input_ptr[i + k];
-        inputs_coal_char4[idx].s[k] = current_symbol;
-      }
-    }
-  }
-  cl_char4 *results_coal_char4 = (cl_char4 *)malloc(size_inputs_coal_char4);
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
-         size_inputs_coal_char4);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs_coal_char4);
-
-  free(inputs_par);
-#else
 #if FSM_INPUTS_WITH_OFFSETS
   // calculate sizes
   int total_number_of_inputs;
@@ -376,7 +346,6 @@ int main(int argc, char **argv) {
 
   free(inputs_par);
 #endif
-#endif
 
   struct partecl_result *exp_results;
   if (do_compare_results) {
@@ -389,7 +358,7 @@ int main(int argc, char **argv) {
   size_t gdim[num_chunks][3], ldim[num_chunks][3]; // assuming three dimensions
   for (int j = 0; j < num_chunks; j++) {
     int num_tests = num_test_cases;
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4
+#if !FSM_INPUTS_WITH_OFFSETS
     num_tests = num_tests_chunks[j];
 #endif
     calculate_dimensions(&device, gdim[j], ldim[j], num_tests, ldim0);
@@ -457,13 +426,6 @@ int main(int argc, char **argv) {
   cl_mem buf_offsets = clCreateBuffer(ctx, CL_MEM_READ_WRITE, sizeof(int) * num_test_cases, NULL, &err);
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_offsets: %d\n", err);
 #else
-#if FSM_INPUTS_COAL_CHAR4
-  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal_char4, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_inputs: %d\n", err);
-
-  cl_mem buf_results = clCreateBuffer(ctx, CL_MEM_READ_WRITE, size_inputs_coal_char4, NULL, &err);
-  if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
-#else
 #if DMA
   cl_mem buf_inputs;
   cl_mem buf_results;
@@ -482,13 +444,12 @@ int main(int argc, char **argv) {
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_results: %d\n", err);
 #endif
 #endif
-#endif
 
   cl_mem buf_transitions = clCreateBuffer(ctx, CL_MEM_READ_ONLY, size_transitions, NULL, &err);
   if (err != CL_SUCCESS) printf("error: clCreateBuffer buf_transitions: %d\n", err);
  
   // Set kernel arguments
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+#if !FSM_INPUTS_WITH_OFFSETS && DMA
   // the inputs and results arguments are different for each chunk
   for (int j = 0; j < num_chunks; j++) {
     add_kernel_arguments(&knl[j], &buf_inputs, &buf_results, NULL,
@@ -535,7 +496,7 @@ int main(int argc, char **argv) {
                   inputs_chunks, results_chunks);
 
   // Cleanup inputs
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+#if !FSM_INPUTS_WITH_OFFSETS && DMA
   // Free device memory buffers
   err = clReleaseMemObject(buf_inputs);
   if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_inputs: %d\n", err);
@@ -583,27 +544,6 @@ int main(int argc, char **argv) {
     results_parptr += num_tests;
   }
 #else
-#if FSM_INPUTS_COAL_CHAR4
-  for (int i = 0; i < num_test_cases; i++) {
-    char *outputptr = results_par[i].output;
-    int reached_end = 0;
-    for (int j = i; j < (padded_size / CHAR_N) * num_test_cases;
-           j += num_test_cases) {
-      if (reached_end) {
-        break;
-      }
-
-      for (int k = 0; k < CHAR_N; k++) {
-        *outputptr = results_coal_char4[j].s[k];
-        if (*outputptr == '\0') {
-          reached_end = 1;
-          break;
-        }
-        outputptr++;
-      }
-    }
-  }
-#else
   struct partecl_result *results_parptr = results_par;
   for (int j = 0; j < num_chunks; j++) {
     char *resultsptr = results_chunks[j];
@@ -618,7 +558,6 @@ int main(int argc, char **argv) {
   }
 #endif
 #endif
-#endif
 
   // check results
   if (do_compare_results) {
@@ -628,7 +567,7 @@ int main(int argc, char **argv) {
   free(results_par);
 
   // Cleanup results and the rest
-#if !FSM_INPUTS_WITH_OFFSETS && !FSM_INPUTS_COAL_CHAR4 && DMA
+#if !FSM_INPUTS_WITH_OFFSETS && DMA
   // Free device memory buffers
   err = clReleaseMemObject(buf_results);
   if (err != CL_SUCCESS) printf("error: clReleaseMemObject buf_results: %d\n", err);
@@ -655,10 +594,6 @@ int main(int argc, char **argv) {
       if (err != CL_SUCCESS) printf("error: clReleaseCommandQueue %d: %d\n", j, err);
     }
 
-#if FSM_INPUTS_COAL_CHAR4
-  free(inputs_coal_char4);
-  free(results_coal_char4);
-#endif
 #if FSM_INPUTS_WITH_OFFSETS
   free(inputs_offset);
   free(results_offset);
@@ -698,10 +633,6 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
       if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
 
 #else
-#if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_coal_char4, inputs_coal_char4, 0, NULL, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-#else
 #if DMA
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_chunks[j], 0, NULL, &event_inputs[j]);
@@ -719,7 +650,6 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 #endif
 
 #endif
-#endif
 
         // launch kernel
       err = clEnqueueNDRangeKernel(queue[j], knl[j], 1, goffset, gdim[j], ldim[j], 1, &event_inputs[j], &event_kernel[j]);
@@ -730,11 +660,6 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_offset, results_offset, 1, &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
-#if FSM_INPUTS_COAL_CHAR4
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_coal_char4, results_coal_char4, 1, &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#else
-
 #if DMA
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_chunks[j], (void*)results_chunks[j], 1, &event_kernel[j], &event_results[j]);
 
@@ -742,7 +667,6 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], results_chunks[j], 1, &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#endif
 #endif
 #endif
     }

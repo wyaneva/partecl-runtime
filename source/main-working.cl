@@ -48,7 +48,7 @@ kernel void execute_fsm(global char *inputs,
                         int starting_state, int input_length, int output_length,
                         int num_test_cases) {
 #else
-#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
+#if FSM_INPUTS_COAL_CHAR
 kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
                         global TEST_INPUTS_TYPE *results,
                         FSM_ATTR_KNL transition *transitions_knl,
@@ -87,7 +87,7 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
   global char *output_ptr = &results[offset];
 #else
 
-#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
+#if FSM_INPUTS_COAL_CHAR
   int coal_idx = idx;
   global TEST_INPUTS_TYPE *input_ptr = &inputs[coal_idx];
   global TEST_INPUTS_TYPE *output_ptr = &results[coal_idx];
@@ -100,51 +100,12 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 
   // execute
   short current_state = starting_state;
-#if FSM_INPUTS_COAL_CHAR4
-  while (true) {
-#else
   while (*input_ptr != '\0' && current_state >=0 ) {
-#endif
 
-#if FSM_INPUTS_COAL_CHAR4
-    char output_temp;
-    if (input_ptr->x == '\0') {
-      output_ptr->x = '\0';
-      break;
-    }
-    current_state = lookup_symbol(transitions, current_state, input_ptr->x,
-                                  input_length, &output_temp);
-    output_ptr->x = output_temp;
-
-    if (input_ptr->y == '\0') {
-      output_ptr->y = '\0';
-      break;
-    }
-    current_state = lookup_symbol(transitions, current_state, input_ptr->y,
-                                  input_length, &output_temp);
-    output_ptr->y = output_temp;
-
-    if (input_ptr->z == '\0') {
-      output_ptr->z = '\0';
-      break;
-    }
-    current_state = lookup_symbol(transitions, current_state, input_ptr->z,
-                                  input_length, &output_temp);
-    output_ptr->z = output_temp;
-
-    if (input_ptr->w == '\0') {
-      output_ptr->w = '\0';
-      break;
-    }
-    current_state = lookup_symbol(transitions, current_state, input_ptr->w,
-                                  input_length, &output_temp);
-    output_ptr->w = output_temp;
-#else
-    current_state = lookup_symbol(transitions, current_state, (*input_ptr),
+  current_state = lookup_symbol(transitions, current_state, (*input_ptr),
                                   input_length, output_ptr);
-#endif
 
-#if FSM_INPUTS_COAL_CHAR || FSM_INPUTS_COAL_CHAR4
+#if FSM_INPUTS_COAL_CHAR
     input_ptr += input_length * num_threads;
     output_ptr += output_length * num_threads;
 #else
@@ -153,8 +114,6 @@ kernel void execute_fsm(global TEST_INPUTS_TYPE *inputs,
 #endif
   }
 
-#if !FSM_INPUTS_COAL_CHAR4
   *output_ptr ='\0';
-#endif
 }
 

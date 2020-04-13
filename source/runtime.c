@@ -117,10 +117,9 @@ void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs,
   if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 }
 
-void runGpuExecution(int, int, int, 
-                     cl_command_queue[], cl_kernel[], 
-                     size_t[3], size_t[][3], size_t[][3],
-                     cl_mem, cl_mem, size_t[], char*[], char*[]);
+void runGpuExecution(int, int, int, cl_command_queue[], cl_kernel[], size_t[3],
+                     size_t[][3], size_t[][3], cl_mem, cl_mem, size_t[], int[],
+                     char *[], char *[]);
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -489,11 +488,9 @@ int main(int argc, char **argv) {
     printf("trans-inputs\ttrans-results\texec-kernel\ttrans-rate-in\ttrans-rate-res\ttime-total\n");
   }
 
-  runGpuExecution(num_runs, num_chunks, do_time, 
-                  queue, knl, 
-                  goffset, gdim, ldim,
-                  buf_inputs, buf_results, size_inputs_chunks, 
-                  inputs_chunks, results_chunks);
+  runGpuExecution(num_runs, num_chunks, do_time, queue, knl, goffset, gdim,
+                  ldim, buf_inputs, buf_results, size_inputs_chunks,
+                  padded_input_size_chunks, inputs_chunks, results_chunks);
 
   // Cleanup inputs
 #if !FSM_INPUTS_WITH_OFFSETS && DMA
@@ -602,12 +599,13 @@ int main(int argc, char **argv) {
   free(transitions);
 }
 
-void runGpuExecution(int num_runs, int num_chunks, int do_time, 
-                     cl_command_queue queue[], cl_kernel knl[], 
+void runGpuExecution(int num_runs, int num_chunks, int do_time,
+                     cl_command_queue queue[], cl_kernel knl[],
                      size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
-                     cl_mem buf_inputs, cl_mem buf_results, 
-                     size_t size_inputs_chunks[], 
-                     char* inputs_chunks[], char* results_chunks[]) {
+                     cl_mem buf_inputs, cl_mem buf_results,
+                     size_t size_inputs_chunks[],
+                     int padded_input_size_chunks[], char *inputs_chunks[],
+                     char *results_chunks[]) {
 
   cl_int err;
   // declare events
@@ -645,7 +643,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 
 #if !FSM_INPUTS_COAL_CHAR
       // set the padded size argument for the kernel
-      err = clSetKernelArg(knl, KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
+      err = clSetKernelArg(knl[j], KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
       if (err != CL_SUCCESS) printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
 

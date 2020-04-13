@@ -44,7 +44,7 @@
 
 // we will use pinned memory with DMA transfer to transfer inputs and results
 // this is particularly the case for padded and padded-transposed
-#define DMA 0
+#define DMA 1
 
 #if FSM_INPUTS_WITH_OFFSETS
 #define KNL_ARG_TRANSITIONS 3
@@ -309,7 +309,15 @@ int main(int argc, char **argv) {
          size_inputs_total);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_total);
+#endif
 
+  // create queues
+  cl_command_queue queue[num_chunks];
+  for(int i = 0; i < num_chunks; i++) {
+    create_command_queue(&queue[i], &ctx, &device);
+  }
+
+#if !FSM_INPUTS_WITH_OFFSETS
   // Allocate pinned host input buffer and mapped input pointer 
   cl_mem pinned_host_inputs[num_chunks];
   char *inputs_chunks[num_chunks];
@@ -340,12 +348,6 @@ int main(int argc, char **argv) {
   }
 
 #endif
-
-  // create queues 
-  cl_command_queue queue[num_chunks];
-  for(int i = 0; i < num_chunks; i++) {
-    create_command_queue(&queue[i], &ctx, &device);
-  }
 
   struct partecl_result *exp_results;
   if (do_compare_results) {

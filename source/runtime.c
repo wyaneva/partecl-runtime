@@ -114,9 +114,16 @@ void add_kernel_arguments(cl_kernel *knl, cl_mem *buf_inputs,
   if (err != CL_SUCCESS) printf("error: clSetKernelArg %d: %d\n", KNL_ARG_NUM_TEST_CASES, err);
 }
 
+#if FSM_INPUTS_WITH_OFFSETS
+void runGpuExecution(int, int, int, cl_command_queue[], cl_kernel[], size_t[3],
+                     size_t[][3], size_t[][3], cl_mem, cl_mem, cl_mem, size_t,
+                     int, char *, char *, int *);
+#else
 void runGpuExecution(int, int, int, cl_command_queue[], cl_kernel[], size_t[3],
                      size_t[][3], size_t[][3], cl_mem, cl_mem, size_t[], int[],
                      char *[], char *[]);
+#endif
+
 int main(int argc, char **argv) {
 
   print_sanity_checks();
@@ -249,8 +256,29 @@ int main(int argc, char **argv) {
 #if FSM_INPUTS_WITH_OFFSETS
   // do not chunk for with-offsets
   num_chunks = 1;
-#else
 
+  // calculate sizes
+  int total_number_of_inputs;
+  size_t size_inputs_offset;
+  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
+                              inputs_par, num_test_cases);
+
+  // allocate memory
+  char *inputs_offset = (char *)malloc(size_inputs_offset);
+  char *results_offset = (char *)malloc(size_inputs_offset);
+  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
+
+  // copy data
+  partecl_input_to_input_with_offsets(inputs_par, inputs_offset, offsets,
+                                      num_test_cases);
+
+  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
+  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
+         size_inputs_offset);
+
+  free(inputs_par);
+#else
   // calculate the number of chunks and total size dynamically
   calculate_chunks_params(&num_chunks, &size_inputs_total, inputs_par,
                           num_test_cases, size_chunks, NULL, NULL, NULL, NULL, NULL,
@@ -281,12 +309,6 @@ int main(int argc, char **argv) {
          size_inputs_total);
   printf("Size of %d test results is %ld bytes.\n", num_test_cases,
          size_inputs_total);
-
-  // create queues 
-  cl_command_queue queue[num_chunks];
-  for(int i = 0; i < num_chunks; i++) {
-    create_command_queue(&queue[i], &ctx, &device);
-  }
 
   // Allocate pinned host input buffer and mapped input pointer 
   cl_mem pinned_host_inputs[num_chunks];
@@ -319,29 +341,11 @@ int main(int argc, char **argv) {
 
 #endif
 
-#if FSM_INPUTS_WITH_OFFSETS
-  // calculate sizes
-  int total_number_of_inputs;
-  size_t size_inputs_offset;
-  calculate_sizes_with_offset(&total_number_of_inputs, &size_inputs_offset,
-                              inputs_par, num_test_cases);
-
-  // allocate memory
-  char *inputs_offset = (char *)malloc(size_inputs_offset);
-  char *results_offset = (char *)malloc(size_inputs_offset);
-  int *offsets = (int *)malloc(sizeof(int) * num_test_cases);
-
-  // copy data
-  partecl_input_to_input_with_offsets(inputs_par, inputs_offset, offsets,
-                                      num_test_cases);
-
-  printf("Size of %d test inputs is %ld bytes.\n", num_test_cases,
-         size_inputs_offset);
-  printf("Size of %d test results is %ld bytes.\n", num_test_cases,
-         size_inputs_offset);
-
-  free(inputs_par);
-#endif
+  // create queues 
+  cl_command_queue queue[num_chunks];
+  for(int i = 0; i < num_chunks; i++) {
+    create_command_queue(&queue[i], &ctx, &device);
+  }
 
   struct partecl_result *exp_results;
   if (do_compare_results) {
@@ -485,9 +489,16 @@ int main(int argc, char **argv) {
     printf("trans-inputs\ttrans-results\texec-kernel\ttrans-rate-in\ttrans-rate-res\ttime-total\n");
   }
 
+#if FSM_INPUTS_WITH_OFFSETS
+  runGpuExecution(num_runs, num_chunks, do_time, queue, knl, goffset, gdim,
+                       ldim, buf_inputs, buf_results, buf_offsets,
+                       size_inputs_offset, num_test_cases, inputs_offset,
+                       results_offset, offsets);
+#else
   runGpuExecution(num_runs, num_chunks, do_time, queue, knl, goffset, gdim,
                   ldim, buf_inputs, buf_results, size_inputs_chunks,
                   padded_input_size_chunks, inputs_chunks, results_chunks);
+#endif
 
   // Cleanup inputs
 #if !FSM_INPUTS_WITH_OFFSETS && DMA
@@ -596,6 +607,14 @@ int main(int argc, char **argv) {
   free(transitions);
 }
 
+#if FSM_INPUTS_WITH_OFFSETS
+void runGpuExecution(int num_runs, int num_chunks, int do_time,
+                     cl_command_queue queue[], cl_kernel knl[],
+                     size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
+                     cl_mem buf_inputs, cl_mem buf_results, cl_mem buf_offsets,
+                     size_t size_inputs_offset, int num_test_cases,
+                     char *inputs_offset, char *results_offset, int *offsets) {
+#else
 void runGpuExecution(int num_runs, int num_chunks, int do_time,
                      cl_command_queue queue[], cl_kernel knl[],
                      size_t goffset[3], size_t gdim[][3], size_t ldim[][3],
@@ -603,6 +622,7 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
                      size_t size_inputs_chunks[],
                      int padded_input_size_chunks[], char *inputs_chunks[],
                      char *results_chunks[]) {
+#endif
 
   cl_int err;
   // declare events
@@ -700,19 +720,30 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
       time_gpu = (double)(ev_end_time - ev_start_time) / 1000000;
       total_gpu += time_gpu;
 
+#if !FSM_INPUTS_WITH_OFFSETS
       double trans_rate_inputs = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_inputs;
       double trans_rate_results = (size_inputs_chunks[j] * 0.001 * 0.001) / trans_results;
+#endif
       if (do_time) {
         if (j == num_chunks - 1) {
           end_to_end =
               timestamp_diff_in_seconds(ete_start, ete_end) * 1000; // in ms
+#if !FSM_INPUTS_WITH_OFFSETS
           printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
                  time_gpu, trans_rate_inputs, trans_rate_results, end_to_end);
+#else
+          printf("%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results,
+                 time_gpu, end_to_end);
+#endif
           printf("totals: %.6f\t%.6f\t%.6f\t%.6f\n", total_inputs,
                  total_results, total_gpu,
                  total_inputs + total_results + total_gpu);
         } else {
+#if !FSM_INPUTS_WITH_OFFSETS
           printf("%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu, trans_rate_inputs, trans_rate_results);
+#else
+          printf("%.6f\t%.6f\t%.6f\n", trans_inputs, trans_results, time_gpu);
+#endif
         }
       }
     }

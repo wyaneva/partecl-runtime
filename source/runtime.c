@@ -44,7 +44,7 @@
 
 // we will use pinned memory with DMA transfer to transfer inputs and results
 // this is particularly the case for padded and padded-transposed
-#define DMA 1
+#define DMA 0
 
 #if FSM_INPUTS_WITH_OFFSETS
 #define KNL_ARG_TRANSITIONS 3
@@ -64,9 +64,6 @@
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void pad_test_case_number(const cl_device_id *, int *);
 void read_expected_results(struct partecl_result *, int);
-
-void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
-                           int input_length);
 
 void transpose_results_back_char(const char *results_coal,
                                  struct partecl_result *results,
@@ -629,24 +626,15 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
 
       err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_offset, inputs_offset, 1, &event_offsets[j], &event_inputs[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-
 #else
-#if DMA
-
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], (void*)inputs_chunks[j], 0, NULL, &event_inputs[j]);
+      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, 0, size_inputs_chunks[j], inputs_chunks[j], 0, NULL, &event_inputs[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-#else
-
-      err = clEnqueueWriteBuffer(queue[j], buf_inputs, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], inputs_chunks[j], num_waits, wait_event, &event_inputs[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueWriteBuffer %d: %d\n", j, err);
-#endif
 
 #if !FSM_INPUTS_COAL_CHAR
       // set the padded size argument for the kernel
       err = clSetKernelArg(knl[j], KNL_ARG_PADDED_INPUT_SIZE, sizeof(int), &padded_input_size_chunks[j]);
       if (err != CL_SUCCESS) printf("error: clSetKernelArg %d chunk %d: %d\n", KNL_ARG_PADDED_INPUT_SIZE, j, err);
 #endif
-
 #endif
 
         // launch kernel
@@ -658,14 +646,8 @@ void runGpuExecution(int num_runs, int num_chunks, int do_time,
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_offset, results_offset, 1, &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
 #else
-#if DMA
       err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, 0, size_inputs_chunks[j], (void*)results_chunks[j], 1, &event_kernel[j], &event_results[j]);
 
-#else
-
-      err = clEnqueueReadBuffer(queue[j], buf_results, CL_FALSE, buf_offsets_chunks[j], size_inputs_chunks[j], results_chunks[j], 1, &event_kernel[j], &event_results[j]);
-      if (err != CL_SUCCESS) printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
-#endif
 #endif
     }
 
@@ -817,6 +799,7 @@ void populate_host_chunks(char *inputs_chunks[], struct partecl_input *inputs_pa
     int padded_size = padded_input_size_chunks[j];
 
 #if FSM_INPUTS_COAL_CHAR
+    // transposing the inputs
     for (int k = 0; k < padded_size; k++) {
       for (int i = testid_start; i < testid_start + num_tests; i++) {
 #else
@@ -830,33 +813,6 @@ void populate_host_chunks(char *inputs_chunks[], struct partecl_input *inputs_pa
 
     testid_start += num_tests;
   }
-}
-
-void transpose_inputs_char(char *inputs, int max_input_size, int num_test_cases,
-                           int input_length) {
-  // transpose inputs for coalesced reading on gpu
-  size_t size = sizeof(char) * max_input_size * num_test_cases;
-  char *inputs_temp = (char *)malloc(size);
-
-  for (int i = 0; i < num_test_cases; i++) {
-    char *inputs_temp_ptr = inputs_temp + i;
-    char *inputs_ptr = inputs + i * max_input_size;
-    for (int j = 0; j < max_input_size; j++) {
-      *inputs_temp_ptr = *inputs_ptr;
-      inputs_temp_ptr += num_test_cases;
-      inputs_ptr++;
-    }
-  }
-
-  char *inputs_ptr = inputs;
-  char *inputs_temp_ptr = inputs_temp;
-  for (int i = 0; i < num_test_cases * max_input_size; i++) {
-    *inputs_ptr = *inputs_temp_ptr;
-    inputs_ptr++;
-    inputs_temp_ptr++;
-  }
-
-  free(inputs_temp);
 }
 
 void transpose_results_back_char(const char *results_coal,

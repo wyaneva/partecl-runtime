@@ -42,7 +42,7 @@ int read_options(int argc, char **argv, int *num_test_cases,
                  int *handle_results, int *do_time, int *num_runs, int *ldim,
                  int *do_choose_device, int *num_chunks) {
   if (argc < 2) {
-    printf("Correct usage: test-on-gpu [number of test cases] (-results Y/N) "
+    printf("Correct usage: gpu-test [number of test cases] (-results Y/N) "
            "(-time Y/N) (-runs ..number..) (-ldim ..number..) (-choose Y/N) "
            "(-chunks ..number..) \n");
     return FAIL;

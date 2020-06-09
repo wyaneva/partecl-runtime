@@ -24,9 +24,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-int run_main(struct partecl_input input, struct partecl_result *result);
+int run_main(struct partecl_input input, struct partecl_output *result);
 
-void run_on_cpu(struct partecl_input input, struct partecl_result *result) {
+void run_on_cpu(struct partecl_input input, struct partecl_output *result) {
   result->test_case_num = input.test_case_num;
   run_main(input, result);
 }
@@ -54,9 +54,9 @@ int main(int argc, char **argv) {
   struct partecl_input *inputs;
   size_t inputs_size = sizeof(struct partecl_input) * num_test_cases;
   inputs = (struct partecl_input *)malloc(inputs_size);
-  struct partecl_result *results;
-  size_t results_size = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(results_size);
+  struct partecl_output *results;
+  size_t results_size = sizeof(struct partecl_output) * num_test_cases;
+  results = (struct partecl_output *)malloc(results_size);
 
   // read the test cases
   if (read_test_cases(inputs, num_test_cases) == FAIL)

@@ -38,10 +38,10 @@
 
 void calculate_dimensions(cl_device_id *, size_t[3], size_t[3], int, int);
 void calculate_global_offset(size_t[3], int, int);
-void read_expected_results(struct partecl_result *, int);
+void read_expected_results(struct partecl_output *, int);
 
 int main(int argc, char **argv) {
-  int do_compare_results = HANDLE_RESULTS;
+  int do_compare_outputs = DO_COMPARE_RESULTS;
   int num_runs = NUM_RUNS;
   int do_time = DO_TIME;
   int ldim0 = LDIM;
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   int num_chunks = NUM_CHUNKS;
   int num_test_cases = 1;
 
-  if (read_options(argc, argv, &num_test_cases, &do_compare_results, &do_time,
+  if (read_options(argc, argv, &num_test_cases, &do_compare_outputs, &do_time,
                    &num_runs, &ldim0, &do_choose_device, &num_chunks) == FAIL)
     return 0;
 
@@ -66,9 +66,9 @@ int main(int argc, char **argv) {
   struct partecl_input *inputs;
   size_t size_inputs = sizeof(struct partecl_input) * num_test_cases;
   inputs = (struct partecl_input *)malloc(size_inputs);
-  struct partecl_result *results;
-  size_t size_results = sizeof(struct partecl_result) * num_test_cases;
-  results = (struct partecl_result *)malloc(size_results);
+  struct partecl_output *results;
+  size_t size_results = sizeof(struct partecl_output) * num_test_cases;
+  results = (struct partecl_output *)malloc(size_results);
 
   // create queue and context
   cl_context ctx;
@@ -116,10 +116,10 @@ int main(int argc, char **argv) {
       kernel_from_string(ctx, knl_text, KERNEL_NAME, KERNEL_OPTIONS);
   free(knl_text);
 
-  struct partecl_result *exp_results;
-  exp_results = (struct partecl_result *)malloc(sizeof(struct partecl_result) *
+  struct partecl_output *exp_results;
+  exp_results = (struct partecl_output *)malloc(sizeof(struct partecl_output) *
                                                 num_test_cases);
-  if (do_compare_results)
+  if (do_compare_outputs)
     read_expected_results(exp_results, num_test_cases);
 
   // clalculate dimensions
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
       // transfer results back
       err = clEnqueueReadBuffer(
           queue_results, buf_results, CL_FALSE,
-          sizeof(partecl_result) * chunksize * j, size_results / num_chunks,
+          sizeof(partecl_output) * chunksize * j, size_results / num_chunks,
           results + chunksize * j, 1, &event_kernel[j], &event_results[j]);
       if (err != CL_SUCCESS)
         printf("error: clEnqueueReadBuffer %d: %d\n", j, err);
@@ -249,8 +249,8 @@ int main(int argc, char **argv) {
              end_to_end);
 
     // check results
-    if (do_compare_results)
-      compare_results(results, exp_results, num_test_cases);
+    if (do_compare_outputs)
+      compare_outputs(results, exp_results, num_test_cases);
 
     for (int j = 0; j < num_chunks; j++) {
       err = clReleaseEvent(event_inputs[j]);
@@ -322,7 +322,7 @@ void calculate_global_offset(size_t goffset[3], int chunksize, int j) {
   goffset[2] = 0;
 }
 
-void read_expected_results(struct partecl_result *results, int num_test_cases) {
+void read_expected_results(struct partecl_output *results, int num_test_cases) {
   // TODO:
 }
 

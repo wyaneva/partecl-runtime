@@ -1,4 +1,4 @@
-EXECUTABLES = gpu-test cpu-test
+EXECUTABLES = gpu-test gpu-test-debug cpu-test
 
 GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(shell pwd)/../kernel-gen/ -I $(HOME)/clClibc/ -DGPU_COMPILED=1 \""
 CPU_FLAGS = -DGCC_COMPILED=1
@@ -15,6 +15,14 @@ gpu-test: ../source/runtime.c \
 	  ../utils/utils.c \
 	  ../kernel-gen/cpu-gen.c 
 	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) 
+
+gpu-test-debug: ../source/runtime.c \
+	  ../source/cl-utils.c \
+	  ../utils/options.c \
+          ../utils/read-test-cases.c \
+	  ../utils/utils.c \
+	  ../kernel-gen/cpu-gen.c
+	clang $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL $(GPU_FLAGS) -g
 
 cpu-test: ../run-on-cpu/run-on-cpu.c \
 	  ../utils/options.c \

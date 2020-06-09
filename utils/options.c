@@ -39,7 +39,7 @@ int parseYNOption(char **argv, int i, char *arg, int *value) {
 // int* do_choose_device - from gpu code
 // int* num_chunks - from gpu code
 int read_options(int argc, char **argv, int *num_test_cases,
-                 int *handle_results, int *do_time, int *num_runs, int *ldim,
+                 int *do_compare_outputs, int *do_time, int *num_runs, int *ldim,
                  int *do_choose_device, int *num_chunks) {
   if (argc < 2) {
     printf("Correct usage: gpu-test [number of test cases] (-results Y/N) "
@@ -58,10 +58,10 @@ int read_options(int argc, char **argv, int *num_test_cases,
         return FAIL;
       }
 
-      // RESULTS
-      if (strcmp(label, "-results") == 0 && handle_results) // compare results
+      // OUTPUTS
+      if (strcmp(label, "-results") == 0 && do_compare_outputs)
       {
-        if (!parseYNOption(argv, i, label, handle_results))
+        if (!parseYNOption(argv, i, label, do_compare_outputs))
           return FAIL;
       }
 

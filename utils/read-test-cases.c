@@ -93,8 +93,8 @@ int copyToken(char **token, char **bptr) {
   return SUCCESS;
 }
 
-int parseStdin(char **arg, char **bptr) {
-  assert(**bptr == '<' && "parseStdin should start with <.");
+int parseFile(char **arg, char **bptr) {
+  assert(**bptr == '<' && "parseFile should start with <.");
   // consume the < char
   (*bptr)++;
 
@@ -137,26 +137,18 @@ int parseArg(char **arg, char **bptr) {
 
   // handle string
   if (**bptr == '"') {
-    int parse = parseString(arg, bptr);
-    if (parse == SUCCESS)
-      return PARSED_ARGV;
-    else
-      return FAIL;
+    return parseString(arg, bptr);
   }
 
-  // handle stdin from a file
+  // handle test inputs from a file
   if (**bptr == '<') {
-    int parse = parseStdin(arg, bptr);
-    if (parse == SUCCESS)
-      return PARSED_STDIN;
-    else
-      return FAIL;
+    return parseFile(arg, bptr);
   }
 
   // handle others
   copyToken(arg, bptr);
 
-  return PARSED_ARGV;
+  return SUCCESS;
 }
 
 int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
@@ -177,48 +169,33 @@ int read_test_cases(struct partecl_input *inputs, int num_test_cases) {
       fgets(line, sizeof(line), file);
     }
 
-    char **args = (char **)malloc(sizeof(char *));
-    int argc = 0;
-    char **stdins = (char **)malloc(sizeof(char *));
-    int stdinc = 0;
+    char **values = (char **)malloc(sizeof(char *));
+    int num_values = 0;
     char *bptr = &line[0];
     while (*bptr != '\n') {
-      char *argparse;
-      int parse = parseArg(&argparse, &bptr);
+      char *inputparse;
+      int parse = parseArg(&inputparse, &bptr);
 
-      if (parse == PARSED_ARGV) // command-line arg
+      if (parse == SUCCESS) // command-line arg
       {
-        argc++;
-        args = (char **)realloc(args, sizeof(char *) * (argc));
-        if (args == NULL) {
-          printf("realloc args: Failed reallocating memory!\n");
+        num_values++;
+        values = (char **)realloc(values, sizeof(char *) * (num_values));
+        if (values == NULL) {
+          printf(
+              "read_test_cases: realloc values: Failed reallocating memory!\n");
           return FAIL;
         }
-        args[argc - 1] = argparse;
-      } else if (parse == PARSED_STDIN) // stdin
-      {
-        // we only support one var for stdin for now
-        stdinc++;
-        stdins = (char **)realloc(stdins, sizeof(char *) * stdinc);
-        if (stdins == NULL) {
-          printf("realloc stdins: Failed reallocating memory!\n");
-          return FAIL;
-        }
-        stdins[stdinc - 1] = argparse;
+        values[num_values - 1] = inputparse;
       }
     }
 
-    populate_inputs(&inputs[index], argc, args, stdinc, stdins);
+    populate_inputs(&inputs[index], num_values, values);
+    index++;
 
     // free pointers
-    for (int i = 0; i < argc; i++)
-      free(args[i]);
-    free(args);
-
-    if (stdinc > 0)
-      free(stdins[0]);
-    free(stdins);
-    index++;
+    for (int i = 0; i < num_values; i++)
+      free(values[i]);
+    free(values);
   }
   fclose(file);
 

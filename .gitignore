@@ -5,6 +5,7 @@ cuda/kernel/*
 
 #objects & executables
 build/gpu-test
+build/gpu-test-debug
 build/cpu-test
 cuda/cuda-test
 cuda/kernel.o

@@ -20,8 +20,6 @@
 // return codes
 #define FAIL 0
 #define SUCCESS 1
-#define PARSED_ARGV 2
-#define PARSED_STDIN 3
 
 // read file
 char *read_file(const char *);

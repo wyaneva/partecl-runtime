@@ -1,7 +1,7 @@
-EXECUTABLES = gpu-test gpu-test-debug cpu-test
+EXECUTABLES = gpu-test gpu-test-debug cpu-test cpu-test-debug
 
 GPU_FLAGS = -DKERNEL_OPTIONS="\"-I $(shell pwd)/../kernel-gen/ -I $(HOME)/clClibc/ -DGPU_COMPILED=1 \""
-CPU_FLAGS = -DGCC_COMPILED=1
+CPU_FLAGS = -I $(HOME)/clClibc/ -DGCC_COMPILED=1
 
 all: $(EXECUTABLES)
 
@@ -29,8 +29,16 @@ cpu-test: ../run-on-cpu/run-on-cpu.c \
 	  ../utils/read-test-cases.c \
 	  ../utils/utils.c \
 	  ../kernel-gen/cpu-gen.c \
-	  ../cpu-gen/test-cl.c
+	  ../kernel-gen/main-cl.c
 	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(CPU_FLAGS) -fopenmp -Wno-implicit-function-declaration 
+
+cpu-test-debug: ../run-on-cpu/run-on-cpu.c \
+	  ../utils/options.c \
+	  ../utils/read-test-cases.c \
+	  ../utils/utils.c \
+	  ../kernel-gen/cpu-gen.c \
+	  ../kernel-gen/main-cl.c
+	gcc -std=gnu99 -o $@ $^ -lrt -lm -O3 $(CPU_FLAGS) -fopenmp -Wno-implicit-function-declaration -g
 
 clean:
 	rm -f $(EXECUTABLES) *.o

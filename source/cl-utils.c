@@ -221,6 +221,16 @@ void create_context_on_gpu(cl_context *context, cl_device_id *dev,
   else
     printf("Local memory size (in bytes): %ld \n", local_memory_size);
 
+  // constant mem size
+  size_t const_memory_size;
+  err = clGetDeviceInfo(*dev, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE,
+                        sizeof(const_memory_size), &const_memory_size, NULL);
+  if (err != CL_SUCCESS)
+    printf("error: clGetDeviceInfo: %d\n", err);
+  else
+    printf("Constant memory size (in bytes): %ld \n", const_memory_size);
+
+
   char version[100];
   err =
       clGetDeviceInfo(*dev, CL_DEVICE_VERSION, sizeof(version), version, NULL);

@@ -70,6 +70,10 @@ int main(int argc, char **argv) {
   size_t size_results = sizeof(struct partecl_output) * num_test_cases;
   results = (struct partecl_output *)malloc(size_results);
 
+  // read the test cases
+  if (read_test_cases(inputs, num_test_cases) == FAIL)
+    return 0;
+
   // create queue and context
   cl_context ctx;
   cl_command_queue queue_inputs;
@@ -81,29 +85,6 @@ int main(int argc, char **argv) {
   create_command_queue(&queue_inputs, &ctx, &device);
   create_command_queue(&queue_kernel, &ctx, &device);
   create_command_queue(&queue_results, &ctx, &device);
-
-  // allocate cpu and gpu memory for inputs
-  /*
-  cl_mem buf_inputs = clCreateBuffer(ctx, CL_MEM_READ_WRITE |
-  CL_MEM_USE_HOST_PTR, size, inputs, &err); if(err != CL_SUCCESS) printf("error:
-  clCreateBuffer: %d\n", err);
-
-  //map the cpu memory to the gpu to generate the test cases
-  void* p_map_inputs = clEnqueueMapBuffer(queue, buf_inputs, CL_TRUE,
-  CL_MAP_WRITE, 0, 0, 0, NULL, NULL, &err); if(err != CL_SUCCESS) printf("error:
-  clEnqueueMapBuffer: %d\n", err);
-    */
-
-  // read the test cases
-  if (read_test_cases(inputs, num_test_cases) == FAIL)
-    return 0;
-
-  // unmap inputs from gpu memory
-  /*
-  err = clEnqueueUnmapMemObject(queue, buf_inputs, p_map_inputs, 0, NULL, NULL);
-  if(err != CL_SUCCESS)
-    printf("error: clEnqueueUnmapMemObject: %d\n", err);
-    */
 
   // create kernel
   char *knl_text = read_file(GPU_SOURCE);
